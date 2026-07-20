@@ -24,12 +24,29 @@ import CommunityScreen from './src/screens/CommunityScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
+import MoneyPersonalityScreen from './src/screens/MoneyPersonalityScreen';
+import LevelScreen from './src/screens/LevelScreen';
+import ChallengesScreen from './src/screens/ChallengesScreen';
+import CoupleModeScreen from './src/screens/CoupleModeScreen';
+import FamilyModeScreen from './src/screens/FamilyModeScreen';
+import BusinessModeScreen from './src/screens/BusinessModeScreen';
+import CAMarketplaceScreen from './src/screens/CAMarketplaceScreen';
+import PricingScreen from './src/screens/PricingScreen';
+import FeedbackScreen from './src/screens/FeedbackScreen';
 import ProUpsellSheet from './src/components/ProUpsellSheet';
 import type { ChatMessage } from './src/components/ChatBubble';
 import BottomNav from './src/navigation/BottomNav';
 import type { TabKey } from './src/navigation/BottomNav';
 import { colors } from './src/theme/tokens';
-import { establishedInput, day1Input, USER_NAME } from './src/engine/mockData';
+import {
+  establishedInput,
+  day1Input,
+  USER_NAME,
+  establishedGamification,
+  day1Gamification,
+  establishedAppOpensLast7Days,
+  day1AppOpensLast7Days,
+} from './src/engine/mockData';
 import { DEFAULT_PERSONA_ID } from './src/explain';
 import type { PersonaId } from './src/explain';
 
@@ -66,6 +83,9 @@ export default function App() {
   }
 
   const input = isDay1 ? day1Input : establishedInput;
+  const gamification = isDay1 ? day1Gamification : establishedGamification;
+  const appOpensLast7Days = isDay1 ? day1AppOpensLast7Days : establishedAppOpensLast7Days;
+
   const handleToggleDay1 = () => {
     setIsDay1((v) => !v);
     setTab('home');
@@ -129,21 +149,56 @@ export default function App() {
                 onNavigateTab={handleNavigateFromChat}
               />
             )}
-            {tab === 'community' && <CommunityScreen input={input} />}
+            {tab === 'community' && (
+              <CommunityScreen input={input} onOpenChallenges={() => setTab('challenges')} />
+            )}
+            {tab === 'challenges' && (
+              <ChallengesScreen today={input.today} onBack={() => setTab('community')} />
+            )}
             {tab === 'profile' && (
               <ProfileScreen
                 userName={USER_NAME}
                 isPro={isPro}
                 personaId={personaId}
+                input={input}
+                gamification={gamification}
                 onOpenPersonality={() => setShowPersonaPicker(true)}
                 onOpenOnboarding={() => setTab('onboarding')}
                 onOpenSettings={() => setTab('settings')}
-                onOpenProSheet={() => setShowProSheet(true)}
+                onOpenPricing={() => setTab('pricing')}
+                onOpenLevel={() => setTab('level')}
+                onOpenMoneyPersonality={() => setTab('moneyPersonality')}
+                onOpenMarket={() => setTab('market')}
+                onOpenCouple={() => setTab('couple')}
+                onOpenFamily={() => setTab('family')}
+                onOpenBusiness={() => setTab('business')}
+                onRequestPro={() => setShowProSheet(true)}
               />
             )}
-            {tab === 'settings' && <SettingsScreen onBack={() => setTab('profile')} />}
+            {tab === 'settings' && (
+              <SettingsScreen
+                daysSinceInstall={input.daysTrackedWithApp}
+                appOpensLast7Days={appOpensLast7Days}
+                onBack={() => setTab('profile')}
+                onOpenFeedback={() => setTab('feedback')}
+              />
+            )}
+            {tab === 'feedback' && <FeedbackScreen onBack={() => setTab('settings')} />}
             {tab === 'onboarding' && (
               <OnboardingScreen onBack={() => setTab('profile')} onConnect={() => setTab('home')} />
+            )}
+            {tab === 'moneyPersonality' && (
+              <MoneyPersonalityScreen input={input} gamification={gamification} onBack={() => setTab('profile')} />
+            )}
+            {tab === 'level' && (
+              <LevelScreen input={input} gamification={gamification} onBack={() => setTab('profile')} />
+            )}
+            {tab === 'couple' && <CoupleModeScreen today={input.today} onBack={() => setTab('profile')} />}
+            {tab === 'family' && <FamilyModeScreen onBack={() => setTab('profile')} />}
+            {tab === 'business' && <BusinessModeScreen onBack={() => setTab('profile')} />}
+            {tab === 'market' && <CAMarketplaceScreen onBack={() => setTab('profile')} />}
+            {tab === 'pricing' && (
+              <PricingScreen onBack={() => setTab('profile')} onStartTrial={handleUnlockPro} />
             )}
           </>
         )}

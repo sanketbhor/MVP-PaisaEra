@@ -1,24 +1,33 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Card from '../components/Card';
 import DeleteAccountSheet from '../components/DeleteAccountSheet';
 import { colors, fonts, radii } from '../theme/tokens';
+import { computeNotificationCadence } from '../engine';
+import type { CadencePreference } from '../engine';
 
-type Cadence = 'low' | 'auto' | 'high';
-
-const CADENCE_OPTIONS: { key: Cadence; label: string }[] = [
+const CADENCE_OPTIONS: { key: CadencePreference; label: string }[] = [
   { key: 'low', label: 'Kam' },
   { key: 'auto', label: 'Auto (learning)' },
   { key: 'high', label: 'Zyada' },
 ];
 
 interface Props {
+  daysSinceInstall: number;
+  appOpensLast7Days: number;
   onBack: () => void;
+  onOpenFeedback: () => void;
 }
 
-export default function SettingsScreen({ onBack }: Props) {
-  const [cadence, setCadence] = useState<Cadence>('auto');
+export default function SettingsScreen({ daysSinceInstall, appOpensLast7Days, onBack, onOpenFeedback }: Props) {
+  const [cadencePreference, setCadencePreference] = useState<CadencePreference>('auto');
+  const [smsFallbackEnabled, setSmsFallbackEnabled] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
+
+  const cadence = useMemo(
+    () => computeNotificationCadence({ daysSinceInstall, appOpensLast7Days, preference: cadencePreference }),
+    [daysSinceInstall, appOpensLast7Days, cadencePreference],
+  );
 
   return (
     <View style={styles.screen}>
@@ -37,11 +46,11 @@ export default function SettingsScreen({ onBack }: Props) {
           </Text>
           <View style={styles.pillRow}>
             {CADENCE_OPTIONS.map((opt) => {
-              const selected = opt.key === cadence;
+              const selected = opt.key === cadencePreference;
               return (
                 <Pressable
                   key={opt.key}
-                  onPress={() => setCadence(opt.key)}
+                  onPress={() => setCadencePreference(opt.key)}
                   accessibilityRole="button"
                   style={[styles.pill, selected && styles.pillSelected]}
                 >
@@ -50,7 +59,28 @@ export default function SettingsScreen({ onBack }: Props) {
               );
             })}
           </View>
-          <Text style={styles.cadenceNote}>Abhi: hafte mein ~3 baar · bade kharche pe hamesha.</Text>
+          <Text style={styles.cadenceNote}>
+            Abhi: din mein ~{cadence.notificationsPerDay} baar · bade kharche pe hamesha. ({cadence.basis})
+          </Text>
+        </Card>
+
+        <Card style={{ marginBottom: 12 }}>
+          <View style={styles.toggleRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowLabel}>SMS se fallback data lo</Text>
+              <Text style={styles.rowSubtext}>
+                Jab bank link na ho paye, SMS se transactions padhega — sirf tab jab tu on kare
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setSmsFallbackEnabled((v) => !v)}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: smsFallbackEnabled }}
+              style={[styles.toggle, smsFallbackEnabled && styles.toggleOn]}
+            >
+              <View style={[styles.toggleKnob, smsFallbackEnabled && styles.toggleKnobOn]} />
+            </Pressable>
+          </View>
         </Card>
 
         <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
@@ -71,6 +101,15 @@ export default function SettingsScreen({ onBack }: Props) {
             </View>
             <Text style={styles.chevron}>›</Text>
           </View>
+          <View style={styles.divider} />
+          <Pressable onPress={onOpenFeedback} accessibilityRole="button" style={styles.row}>
+            <Text style={styles.rowIcon}>💬</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowLabel}>Feedback bhejo</Text>
+              <Text style={styles.rowSubtext}>Beta hai — jo kharab laga bata do</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
         </Card>
 
         <Pressable onPress={() => setShowDeleteSheet(true)} accessibilityRole="button">
@@ -124,6 +163,11 @@ const styles = StyleSheet.create({
   pillText: { fontFamily: fonts.sans, fontSize: 12, color: colors.textPrimary },
   pillTextSelected: { color: colors.heroOnColor },
   cadenceNote: { fontFamily: fonts.sansRegular, fontSize: 11.5, color: colors.textMuted, marginTop: 10 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  toggle: { width: 44, height: 26, borderRadius: 13, backgroundColor: colors.trackBg, padding: 3, justifyContent: 'center' },
+  toggleOn: { backgroundColor: colors.hero },
+  toggleKnob: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
+  toggleKnobOn: { alignSelf: 'flex-end' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 15 },
   rowIcon: { width: 22, textAlign: 'center', fontSize: 15 },
   rowLabel: { fontFamily: fonts.sansMedium, fontSize: 14, color: colors.textPrimary },

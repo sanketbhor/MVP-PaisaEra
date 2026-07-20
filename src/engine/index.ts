@@ -30,6 +30,29 @@ export { computeGoalStatus, computeGoalProgressPct, computeGoalProjection } from
 
 export { detectSubscriptionRenewalInsight } from './subscriptionEngine';
 
+export { PROGRESSION_LEVELS, computeProgressionStatus } from './progressionEngine';
+
+export { computeChallengeProgress } from './challengesEngine';
+export type { ChallengeProgress } from './challengesEngine';
+
+export { computeCoupleExpenseSplit, computeBusinessCashFlow } from './modesEngine';
+export type { CoupleMember, CoupleExpenseSplit, BusinessCashFlow } from './modesEngine';
+
+export {
+  couplePartnerNames,
+  coupleMembers,
+  coupleSharedGoal,
+  familyHouseholdName,
+  familyMembers,
+  familyRoleLabel,
+  familyHouseholdBudget,
+  businessData,
+} from './modesMockData';
+export type { FamilyRole, FamilyMember, BusinessModeData } from './modesMockData';
+
+export { computeNotificationCadence } from './notificationEngine';
+export type { CadencePreference, EngagementInput, NotificationCadence } from './notificationEngine';
+
 export {
   BUDGET_RULES,
   GOAL_RULES,

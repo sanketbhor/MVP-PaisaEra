@@ -1,20 +1,22 @@
 import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Card from '../components/Card';
 import { colors, fonts } from '../theme/tokens';
 import { computeCategorySpendPctOfIncome } from '../engine';
 import type { EngineInput } from '../engine';
 import { FOOD_SPEND_BENCHMARK, COMMUNITY_WINS } from '../content/communityContent';
+import { CHALLENGES } from '../content/challengesContent';
 
 interface Props {
   input: EngineInput;
+  onOpenChallenges: () => void;
 }
 
 // Bars are scaled against this ceiling so the two are visually comparable —
 // most food-spend-to-income ratios fall well under it.
 const BAR_SCALE_MAX_PCT = 0.3;
 
-export default function CommunityScreen({ input }: Props) {
+export default function CommunityScreen({ input, onOpenChallenges }: Props) {
   const foodBudget = input.categoryBudgets.find((b) => b.category === FOOD_SPEND_BENCHMARK.categoryLabel);
   const userShare = useMemo(
     () => (foodBudget ? computeCategorySpendPctOfIncome(foodBudget, input) : null),
@@ -81,6 +83,21 @@ export default function CommunityScreen({ input }: Props) {
           </Card>
         )}
 
+        <Pressable onPress={onOpenChallenges} accessibilityRole="button">
+          <Card style={styles.challengesCard}>
+            <View style={styles.challengesIconChip}>
+              <Text style={styles.challengesIcon}>🎯</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.challengesTitle}>Challenges join karo</Text>
+              <Text style={styles.challengesSubtitle}>
+                {CHALLENGES[0].name} · {CHALLENGES.length - 1} aur live
+              </Text>
+            </View>
+            <Text style={styles.challengesChevron}>›</Text>
+          </Card>
+        </Pressable>
+
         <Text style={styles.sectionLabel}>Is hafte ki wins</Text>
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           {COMMUNITY_WINS.map((win, i) => (
@@ -124,6 +141,27 @@ const styles = StyleSheet.create({
   track: { height: 8, borderRadius: 4, backgroundColor: colors.trackBg, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 4 },
   emptyBody: { fontFamily: fonts.sansRegular, fontSize: 13, lineHeight: 19, color: colors.textMuted2 },
+  challengesCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(63,122,92,.4)',
+  },
+  challengesIconChip: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.insightBadgeBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  challengesIcon: { fontSize: 16 },
+  challengesTitle: { fontFamily: fonts.sans, fontSize: 14, color: colors.hero },
+  challengesSubtitle: { fontFamily: fonts.sansRegular, fontSize: 12, color: colors.textMuted, marginTop: 1 },
+  challengesChevron: { fontFamily: fonts.sansRegular, fontSize: 13, color: colors.hero },
   sectionLabel: {
     fontFamily: fonts.sans,
     fontSize: 11.5,

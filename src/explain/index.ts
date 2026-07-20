@@ -16,3 +16,4 @@ export { PERSONALITIES, DEFAULT_PERSONA_ID } from './personalities';
 export type { PersonaId, PersonaConfig } from './personalities';
 export { buildChatResponse } from './chatResponse';
 export { buildSystemPrompt } from './systemPrompt';
+export { buildLevelStatusText } from './progression';

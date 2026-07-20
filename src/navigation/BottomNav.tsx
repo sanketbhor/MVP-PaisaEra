@@ -17,7 +17,16 @@ export type TabKey =
   | 'community'
   | 'profile'
   | 'settings'
-  | 'onboarding';
+  | 'onboarding'
+  | 'moneyPersonality'
+  | 'level'
+  | 'challenges'
+  | 'couple'
+  | 'family'
+  | 'business'
+  | 'market'
+  | 'pricing'
+  | 'feedback';
 
 type NavGroup = 'home' | 'goals' | 'chat' | 'community' | 'profile';
 
@@ -44,9 +53,18 @@ function groupFor(tab: TabKey): NavGroup | null {
     case 'chat':
       return 'chat';
     case 'community':
+    case 'challenges':
       return 'community';
     case 'profile':
     case 'settings':
+    case 'moneyPersonality':
+    case 'level':
+    case 'couple':
+    case 'family':
+    case 'business':
+    case 'market':
+    case 'pricing':
+    case 'feedback':
       return 'profile';
     case 'onboarding':
       return null;

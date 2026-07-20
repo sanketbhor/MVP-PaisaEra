@@ -198,3 +198,45 @@ export interface CategorySpendShareResult {
   pctOfIncome: number; // 0..1, category spend ÷ monthly income
   provenance: Provenance;
 }
+
+// ── Gamification / progression ─────────────────────────────────────────
+// Some fields below (streak, peer percentile, personality labels) are
+// declared facts from an upstream analytics/community-aggregation service —
+// the same category as billsAreEstimate or transactionsTrackedCount, not
+// something derived from nothing here. What IS computed by the engine is
+// the savings-rate-vs-baseline ratio and the level it maps to.
+
+export interface MoneyPersonality {
+  id: string;
+  emoji: string;
+  name: string;
+  tagline: string;
+  strength: string;
+  weakness: string;
+  superpower: string;
+}
+
+export interface LevelDefinition {
+  id: string;
+  emoji: string;
+  name: string;
+}
+
+export interface GamificationInput {
+  // Savings rate (savings ÷ income) from when the user started being tracked.
+  baselineSavingsRate: number; // 0..1, declared
+  consistentSavingsMonths: number; // declared: consecutive months with positive net savings
+  peerSavingsPercentile: number; // 0..1, e.g. 0.85 = "top 15%" — anonymized community aggregate
+  personality: MoneyPersonality;
+  // False for a brand-new (Day-1) user — gates the whole feature so it never
+  // implies a streak/level/personality the app hasn't actually observed.
+  hasEnoughHistory: boolean;
+}
+
+export interface ProgressionStatus {
+  currentLevelIndex: number; // 0-based index into PROGRESSION_LEVELS
+  currentSavingsRate: number; // 0..1, real computed (savings ÷ income)
+  pctAheadOfBaseline: number; // real computed ratio, can be negative
+  pctGapToNextLevel: number | null; // null if already at the top level
+  provenance: Provenance;
+}

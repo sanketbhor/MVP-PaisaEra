@@ -1,4 +1,4 @@
-import type { EngineInput } from './types';
+import type { EngineInput, GamificationInput } from './types';
 
 export const USER_NAME = 'Sanket';
 
@@ -222,4 +222,48 @@ export const day1Input: EngineInput = {
     },
   ],
   categoryBudgets: [],
+};
+
+// Gamification declared facts — see the note in engine/types.ts. Streak and
+// percentile are the kind of thing an upstream analytics job would compute
+// over full history; the engine only computes the real-time savings-rate
+// ratio on top of these.
+export const establishedGamification: GamificationInput = {
+  baselineSavingsRate: 0.1,
+  consistentSavingsMonths: 5,
+  peerSavingsPercentile: 0.85,
+  hasEnoughHistory: true,
+  personality: {
+    id: 'silent-saver',
+    emoji: '🐢',
+    name: 'Silent Saver',
+    tagline: 'Shor nahi machata — bas har mahine chup-chaap bachata hai.',
+    strength: 'Consistency — 5 mahine lagataar saved',
+    weakness: 'Late-night food orders',
+    superpower: 'Top 15% savers apni age mein',
+  },
+};
+
+// Day-1 users get an honest "still learning" experience — never a fake
+// personality reveal (SHARED CONTEXT Principle 5). hasEnoughHistory:false
+// gates the whole feature; the other fields are unused placeholders.
+// Declared engagement metric (would come from real analytics) — feeds the
+// adaptive notification cadence in Settings.
+export const establishedAppOpensLast7Days = 5;
+export const day1AppOpensLast7Days = 3;
+
+export const day1Gamification: GamificationInput = {
+  baselineSavingsRate: 0,
+  consistentSavingsMonths: 0,
+  peerSavingsPercentile: 0,
+  hasEnoughHistory: false,
+  personality: {
+    id: 'unknown',
+    emoji: '🌱',
+    name: '',
+    tagline: '',
+    strength: '',
+    weakness: '',
+    superpower: '',
+  },
 };
