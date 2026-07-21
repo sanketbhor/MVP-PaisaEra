@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
+import OnboardingScreenLayout from '../components/OnboardingScreenLayout';
 import { colors, fonts } from '../../theme/tokens';
 import { sendOtp } from '../../auth';
 
@@ -30,7 +31,11 @@ export default function PhoneEntryScreen({ phoneLocal, onChangePhone, onBack, on
   };
 
   return (
-    <View style={styles.screen}>
+    <OnboardingScreenLayout
+      footer={
+        <PrimaryButton label="OTP bhejo" onPress={handleSend} disabled={phoneLocal.length !== 10} loading={loading} />
+      }
+    >
       <Pressable onPress={onBack} accessibilityRole="button" style={styles.backBtn}>
         <Text style={styles.backIcon}>←</Text>
       </Pressable>
@@ -60,15 +65,11 @@ export default function PhoneEntryScreen({ phoneLocal, onChangePhone, onBack, on
       </View>
 
       {error && <Text style={styles.error}>{error}</Text>}
-
-      <View style={{ flex: 1 }} />
-      <PrimaryButton label="OTP bhejo" onPress={handleSend} disabled={phoneLocal.length !== 10} loading={loading} />
-    </View>
+    </OnboardingScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 26, paddingTop: 12 },
   backBtn: { width: 34, marginBottom: 22 },
   backIcon: { fontSize: 20, color: colors.textPrimary },
   title: { fontFamily: fonts.sans, fontSize: 24, letterSpacing: -0.3, color: colors.textPrimary },

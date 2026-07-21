@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
+import OnboardingScreenLayout from '../components/OnboardingScreenLayout';
 import { colors, fonts } from '../../theme/tokens';
 import { sendOtp, verifyOtp } from '../../auth';
 import type { AppSession } from '../../auth';
@@ -66,7 +67,11 @@ export default function OtpScreen({ phoneLocal, initialCooldownSeconds, demoCode
   const seconds = String(cooldown % 60).padStart(2, '0');
 
   return (
-    <View style={styles.screen}>
+    <OnboardingScreenLayout
+      footer={
+        <PrimaryButton label="Verify karo" onPress={() => handleVerify(code)} disabled={code.length !== 6} loading={verifying} />
+      }
+    >
       <Pressable onPress={onBack} accessibilityRole="button" style={styles.backBtn}>
         <Text style={styles.backIcon}>←</Text>
       </Pressable>
@@ -110,15 +115,11 @@ export default function OtpScreen({ phoneLocal, initialCooldownSeconds, demoCode
           </Pressable>
         )}
       </View>
-
-      <View style={{ flex: 1 }} />
-      <PrimaryButton label="Verify karo" onPress={() => handleVerify(code)} disabled={code.length !== 6} loading={verifying} />
-    </View>
+    </OnboardingScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 26, paddingTop: 12 },
   backBtn: { width: 34, marginBottom: 22 },
   backIcon: { fontSize: 20, color: colors.textPrimary },
   title: { fontFamily: fonts.sans, fontSize: 24, letterSpacing: -0.3, color: colors.textPrimary },

@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 import GhostButton from '../components/GhostButton';
+import OnboardingScreenLayout from '../components/OnboardingScreenLayout';
 import ProgressDots from '../components/ProgressDots';
 import Chip from '../components/Chip';
 import { colors, fonts } from '../../theme/tokens';
@@ -23,7 +24,14 @@ interface Props {
 
 export default function GoalScreen({ goalType, onChangeGoalType, onNext, onSkip }: Props) {
   return (
-    <View style={styles.screen}>
+    <OnboardingScreenLayout
+      footer={
+        <>
+          <PrimaryButton label="Aage badho" onPress={onNext} disabled={goalType === null} />
+          <GhostButton label="Abhi skip karo" onPress={onSkip} />
+        </>
+      }
+    >
       <ProgressDots filled={3} />
       <Text style={styles.title}>Koi ek goal? (optional)</Text>
       <Text style={styles.subtitle}>Baaki app real data se khud seekh lega. Ek chuno ya skip karo.</Text>
@@ -38,16 +46,11 @@ export default function GoalScreen({ goalType, onChangeGoalType, onNext, onSkip 
           />
         ))}
       </View>
-
-      <View style={{ flex: 1 }} />
-      <PrimaryButton label="Aage badho" onPress={onNext} disabled={goalType === null} />
-      <GhostButton label="Abhi skip karo" onPress={onSkip} />
-    </View>
+    </OnboardingScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 26, paddingTop: 12 },
   title: { fontFamily: fonts.sans, fontSize: 24, letterSpacing: -0.3, color: colors.textPrimary, marginTop: 24 },
   subtitle: { fontFamily: fonts.sansRegular, fontSize: 14, lineHeight: 21, color: colors.textMuted2, marginTop: 8 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 24 },

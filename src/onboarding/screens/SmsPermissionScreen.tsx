@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 import GhostButton from '../components/GhostButton';
+import OnboardingScreenLayout from '../components/OnboardingScreenLayout';
 import { colors, fonts } from '../../theme/tokens';
 import { logConsent } from '../../data';
 import { requestSmsPermission } from '../permissions';
@@ -26,7 +27,14 @@ export default function SmsPermissionScreen({ userId, onNext }: Props) {
   };
 
   return (
-    <View style={styles.screen}>
+    <OnboardingScreenLayout
+      footer={
+        <>
+          <PrimaryButton label="Allow karo" onPress={handleAllow} loading={busy} />
+          <GhostButton label="Abhi nahi" onPress={onNext} />
+        </>
+      }
+    >
       <View style={styles.hero}>
         <View style={styles.iconBox}>
           <Text style={styles.iconText}>💬</Text>
@@ -41,15 +49,11 @@ export default function SmsPermissionScreen({ userId, onNext }: Props) {
           <Text style={styles.lockText}>Sab kuch tere phone pe process hota hai.</Text>
         </View>
       </View>
-
-      <PrimaryButton label="Allow karo" onPress={handleAllow} loading={busy} />
-      <GhostButton label="Abhi nahi" onPress={onNext} />
-    </View>
+    </OnboardingScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 26, paddingTop: 12 },
   hero: { flex: 1, justifyContent: 'center' },
   iconBox: {
     width: 56,

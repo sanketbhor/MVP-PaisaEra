@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
+import OnboardingScreenLayout from '../components/OnboardingScreenLayout';
 import ProgressDots from '../components/ProgressDots';
 import { colors, fonts } from '../../theme/tokens';
 
@@ -12,7 +13,9 @@ interface Props {
 
 export default function NameScreen({ name, onChangeName, onNext }: Props) {
   return (
-    <View style={styles.screen}>
+    <OnboardingScreenLayout
+      footer={<PrimaryButton label="Aage badho" onPress={onNext} disabled={name.trim().length === 0} />}
+    >
       <ProgressDots filled={1} />
       <Text style={styles.title}>Name?</Text>
       <Text style={styles.subtitle}>Sirf greet karne ke liye — "Good morning, Sammy ☀"</Text>
@@ -25,15 +28,11 @@ export default function NameScreen({ name, onChangeName, onNext }: Props) {
         style={styles.input}
         autoFocus
       />
-
-      <View style={{ flex: 1 }} />
-      <PrimaryButton label="Aage badho" onPress={onNext} disabled={name.trim().length === 0} />
-    </View>
+    </OnboardingScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 26, paddingTop: 12 },
   title: { fontFamily: fonts.sans, fontSize: 24, letterSpacing: -0.3, color: colors.textPrimary, marginTop: 24 },
   subtitle: { fontFamily: fonts.sansRegular, fontSize: 14, lineHeight: 21, color: colors.textMuted2, marginTop: 8 },
   input: {

@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Card from '../../components/Card';
 import PrimaryButton from '../components/PrimaryButton';
 import GhostButton from '../components/GhostButton';
+import OnboardingScreenLayout from '../components/OnboardingScreenLayout';
 import ProgressDots from '../components/ProgressDots';
 import Chip from '../components/Chip';
 import { colors, fonts } from '../../theme/tokens';
@@ -18,7 +19,14 @@ interface Props {
 
 export default function SalaryDateScreen({ salaryDate, onChangeSalaryDate, onNext, onSkip }: Props) {
   return (
-    <View style={styles.screen}>
+    <OnboardingScreenLayout
+      footer={
+        <>
+          <PrimaryButton label="Aage badho" onPress={onNext} disabled={salaryDate === null} />
+          <GhostButton label="Abhi skip karo" onPress={onSkip} />
+        </>
+      }
+    >
       <ProgressDots filled={2} />
       <Text style={styles.title}>Salary kab aati hai?</Text>
       <Text style={styles.subtitle}>Isse Safe to Spend calculate kar paate hain — pattern seekhne se pehle bhi.</Text>
@@ -44,16 +52,11 @@ export default function SalaryDateScreen({ salaryDate, onChangeSalaryDate, onNex
           rahega.
         </Text>
       </View>
-
-      <View style={{ flex: 1 }} />
-      <PrimaryButton label="Aage badho" onPress={onNext} disabled={salaryDate === null} />
-      <GhostButton label="Abhi skip karo" onPress={onSkip} />
-    </View>
+    </OnboardingScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 26, paddingTop: 12 },
   title: { fontFamily: fonts.sans, fontSize: 24, letterSpacing: -0.3, color: colors.textPrimary, marginTop: 24 },
   subtitle: { fontFamily: fonts.sansRegular, fontSize: 14, lineHeight: 21, color: colors.textMuted2, marginTop: 8 },
   cardLabel: { fontFamily: fonts.sansBold, fontSize: 12, color: colors.textMuted, marginBottom: 12 },

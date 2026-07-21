@@ -2,6 +2,7 @@ import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 import GhostButton from '../components/GhostButton';
+import OnboardingScreenLayout from '../components/OnboardingScreenLayout';
 import { colors, fonts, radii } from '../../theme/tokens';
 
 interface Props {
@@ -12,7 +13,28 @@ interface Props {
 
 export default function WelcomeScreen({ onNext, devPlatform, onSetDevPlatform }: Props) {
   return (
-    <View style={styles.screen}>
+    <OnboardingScreenLayout
+      footer={
+        <>
+          <PrimaryButton label="Shuru karo" onPress={onNext} />
+          <GhostButton label="Pehle se account hai? Log in" onPress={onNext} />
+
+          {/* Dev-only: this build only runs as a web preview, where Platform.OS
+              is "web" — a real device build ignores this and uses the actual OS. */}
+          {Platform.OS === 'web' && (
+            <View style={styles.devRow}>
+              <Text style={styles.devLabel}>Preview platform:</Text>
+              <Pressable onPress={() => onSetDevPlatform('ios')} style={[styles.devPill, devPlatform === 'ios' && styles.devPillOn]}>
+                <Text style={[styles.devPillText, devPlatform === 'ios' && styles.devPillTextOn]}>iOS</Text>
+              </Pressable>
+              <Pressable onPress={() => onSetDevPlatform('android')} style={[styles.devPill, devPlatform === 'android' && styles.devPillOn]}>
+                <Text style={[styles.devPillText, devPlatform === 'android' && styles.devPillTextOn]}>Android</Text>
+              </Pressable>
+            </View>
+          )}
+        </>
+      }
+    >
       <View style={styles.hero}>
         <View style={styles.iconBox}>
           <Text style={styles.iconText}>₹</Text>
@@ -23,29 +45,11 @@ export default function WelcomeScreen({ onNext, devPlatform, onSetDevPlatform }:
           pade.
         </Text>
       </View>
-
-      <PrimaryButton label="Shuru karo" onPress={onNext} />
-      <GhostButton label="Pehle se account hai? Log in" onPress={onNext} />
-
-      {/* Dev-only: this build only runs as a web preview, where Platform.OS
-          is "web" — a real device build ignores this and uses the actual OS. */}
-      {Platform.OS === 'web' && (
-        <View style={styles.devRow}>
-          <Text style={styles.devLabel}>Preview platform:</Text>
-          <Pressable onPress={() => onSetDevPlatform('ios')} style={[styles.devPill, devPlatform === 'ios' && styles.devPillOn]}>
-            <Text style={[styles.devPillText, devPlatform === 'ios' && styles.devPillTextOn]}>iOS</Text>
-          </Pressable>
-          <Pressable onPress={() => onSetDevPlatform('android')} style={[styles.devPill, devPlatform === 'android' && styles.devPillOn]}>
-            <Text style={[styles.devPillText, devPlatform === 'android' && styles.devPillTextOn]}>Android</Text>
-          </Pressable>
-        </View>
-      )}
-    </View>
+    </OnboardingScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 26, paddingTop: 12, justifyContent: 'flex-end' },
   hero: { flex: 1, justifyContent: 'center' },
   iconBox: {
     width: 64,

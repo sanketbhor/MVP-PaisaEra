@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 import GhostButton from '../components/GhostButton';
+import OnboardingScreenLayout from '../components/OnboardingScreenLayout';
 import { colors, fonts } from '../../theme/tokens';
 import { logConsent } from '../../data';
 import { requestNotificationPermission } from '../permissions';
@@ -23,7 +24,14 @@ export default function NotificationPermissionScreen({ userId, onNext }: Props) 
   };
 
   return (
-    <View style={styles.screen}>
+    <OnboardingScreenLayout
+      footer={
+        <>
+          <PrimaryButton label="Notifications on karo" onPress={handleAllow} loading={busy} />
+          <GhostButton label="Abhi nahi" onPress={onNext} />
+        </>
+      }
+    >
       <View style={styles.hero}>
         <View style={styles.iconBox}>
           <Text style={styles.iconText}>🔔</Text>
@@ -34,15 +42,11 @@ export default function NotificationPermissionScreen({ userId, onNext }: Props) 
           kitni baar aaye woh baad mein control kar sakte ho.
         </Text>
       </View>
-
-      <PrimaryButton label="Notifications on karo" onPress={handleAllow} loading={busy} />
-      <GhostButton label="Abhi nahi" onPress={onNext} />
-    </View>
+    </OnboardingScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 26, paddingTop: 12 },
   hero: { flex: 1, justifyContent: 'center' },
   iconBox: {
     width: 56,
