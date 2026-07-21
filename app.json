@@ -7,9 +7,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.paisaera.app"
     },
     "android": {
+      "package": "com.paisaera.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -26,6 +28,12 @@
       "expo-splash-screen",
       "expo-secure-store",
       "expo-notifications"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5afd6b65-c197-4458-b8da-1d9f8381ab19"
+      }
+    },
+    "owner": "sammy123"
   }
 }
