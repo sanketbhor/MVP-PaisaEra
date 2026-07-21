@@ -84,16 +84,30 @@ export default function HomeScreen({ input, userName, isDay1, onToggleDay1, onNa
           </Pressable>
         </View>
 
-        <SafeToSpendHero
-          breakdown={sts}
-          subLabel={
-            isDay1
-              ? 'Salary aur ab tak ke kharchon se'
-              : `${formatINR(sts.remaining)} bacha · ${sts.daysRemainingInMonth} din`
-          }
-          ctaLabel={isDay1 ? 'Kya missing? →' : 'Hisaab dekh →'}
-          onPress={() => setExpandedOpen(true)}
-        />
+        {sts.income > 0 ? (
+          <SafeToSpendHero
+            breakdown={sts}
+            subLabel={
+              isDay1
+                ? 'Salary aur ab tak ke kharchon se'
+                : `${formatINR(sts.remaining)} bacha · ${sts.daysRemainingInMonth} din`
+            }
+            ctaLabel={isDay1 ? 'Kya missing? →' : 'Hisaab dekh →'}
+            onPress={() => setExpandedOpen(true)}
+          />
+        ) : (
+          // Genuinely no income has been observed yet (a fresh manual-entry
+          // signup, before anything's been added) — showing "₹0" here would
+          // read as a real answer instead of an honest unknown, so this
+          // replaces the hero entirely rather than rendering it with a zero.
+          <Card style={styles.unknownIncomeCard}>
+            <Text style={styles.unknownIncomeTitle}>Safe to Spend abhi calculate nahi kar sakte</Text>
+            <Text style={styles.unknownIncomeBody}>
+              Income detect nahi hui abhi. Bank link karo ya apna pehla kharcha add karo — tabhi hisaab
+              shuru hoga.
+            </Text>
+          </Card>
+        )}
 
         {isDay1 ? (
           <BillCard
@@ -172,4 +186,7 @@ const styles = StyleSheet.create({
   hubCard: { alignItems: 'flex-start', paddingVertical: 13, paddingHorizontal: 12 },
   hubIcon: { fontSize: 16 },
   hubLabel: { fontFamily: fonts.sans, fontSize: 12.5, color: colors.textPrimary, marginTop: 5 },
+  unknownIncomeCard: { borderWidth: 1, borderStyle: 'dashed', borderColor: colors.dashedBorder },
+  unknownIncomeTitle: { fontFamily: fonts.sans, fontSize: 14.5, color: colors.textPrimary, marginBottom: 6 },
+  unknownIncomeBody: { fontFamily: fonts.sansRegular, fontSize: 13, lineHeight: 20, color: colors.textMuted2 },
 });

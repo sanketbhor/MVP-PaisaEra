@@ -6,13 +6,18 @@
     "@expo-google-fonts/hanken-grotesk": "^0.4.3",
     "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
     "@expo/metro-runtime": "~57.0.6",
+    "@supabase/supabase-js": "^2.109.0",
     "expo": "~57.0.7",
     "expo-font": "~57.0.1",
+    "expo-notifications": "~57.0.6",
+    "expo-secure-store": "~57.0.1",
     "expo-splash-screen": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.0",
+    "react-native-get-random-values": "~1.11.0",
+    "react-native-url-polyfill": "^4.0.0",
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
