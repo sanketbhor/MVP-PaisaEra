@@ -14,6 +14,7 @@ import {
   IBMPlexMono_600SemiBold,
 } from '@expo-google-fonts/ibm-plex-mono';
 import MainApp from './MainApp';
+import AppSplashScreen from './src/components/AppSplashScreen';
 import { OnboardingNavigator, isOnboardingComplete, loadCompletedPath, buildFreshEngineInput } from './src/onboarding';
 import type { ConnectPath } from './src/onboarding';
 import { getSession } from './src/auth';
@@ -88,7 +89,11 @@ export default function App() {
   }
 
   if (phase === 'checking') {
-    return <View style={styles.root} onLayout={onLayoutRootView} />;
+    return (
+      <View style={styles.root} onLayout={onLayoutRootView}>
+        <AppSplashScreen />
+      </View>
+    );
   }
 
   if (phase === 'onboarding') {
