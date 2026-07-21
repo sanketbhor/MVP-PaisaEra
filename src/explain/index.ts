@@ -15,5 +15,6 @@ export { buildForecastText } from './forecast';
 export { PERSONALITIES, DEFAULT_PERSONA_ID } from './personalities';
 export type { PersonaId, PersonaConfig } from './personalities';
 export { buildChatResponse } from './chatResponse';
+export { phraseChatResponse } from './llmPhrase';
 export { buildSystemPrompt } from './systemPrompt';
 export { buildLevelStatusText } from './progression';

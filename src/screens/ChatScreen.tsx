@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import ChatBubble from '../components/ChatBubble';
 import type { ChatMessage } from '../components/ChatBubble';
@@ -8,7 +8,7 @@ import { colors, fonts } from '../theme/tokens';
 import { routeQuery } from '../nlq';
 import type { NavigableTab } from '../nlq';
 import type { EngineInput } from '../engine';
-import { PERSONALITIES, buildChatResponse } from '../explain';
+import { PERSONALITIES, buildChatResponse, phraseChatResponse } from '../explain';
 import type { PersonaId } from '../explain';
 import type { TabKey } from '../navigation/BottomNav';
 
@@ -69,10 +69,17 @@ export default function ChatScreen({
   const persona = PERSONALITIES[personaId];
   const scrollRef = useRef<ScrollView>(null);
   const remaining = Math.max(DAILY_MESSAGE_LIMIT - messagesUsedToday, 0);
+  // Only populated while a real LLM call is in flight (demo-mode template
+  // phrasing resolves synchronously, so this stays empty most of the time)
+  // — echoes the user's message immediately instead of leaving the screen
+  // silent for the round trip.
+  const [pendingText, setPendingText] = useState<string | null>(null);
 
-  const handleSend = (text: string) => {
+  const handleSend = async (text: string) => {
+    setPendingText(text);
+    requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
     const fact = routeQuery(text, input);
-    const response = buildChatResponse(fact, personaId);
+    const response = await phraseChatResponse(fact, personaId, text);
     const aiMessage: ChatMessage = {
       id: nextId('msg-a'),
       role: 'ai',
@@ -82,6 +89,7 @@ export default function ChatScreen({
       sourceTab: response.sourceTab,
     };
     onSendMessage(text, aiMessage);
+    setPendingText(null);
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
   };
 
@@ -111,6 +119,12 @@ export default function ChatScreen({
             }
           />
         ))}
+        {pendingText && (
+          <>
+            <ChatBubble message={{ id: 'pending-user', role: 'user', text: pendingText }} />
+            <ChatBubble message={{ id: 'pending-ai', role: 'ai', text: 'Paisa soch raha hai…' }} />
+          </>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
