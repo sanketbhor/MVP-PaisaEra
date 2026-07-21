@@ -20,8 +20,10 @@
 - ❌ `SMS_PROVIDER=console` — OTPs are printed to the terminal running
   uvicorn, not actually texted anywhere. `msg91`/`twilio` are stubs (see
   `Backend/app/sms/`)
-- ❌ `ai-phrase` edge function not deployed, `GEMINI_API_KEY` not set as a
-  function secret (unrelated to auth, still outstanding from earlier)
+- ✅ Chat phrasing (`app/ai.py` + `ai_service.py`, real Gemini calls) —
+  live-tested end to end through the actual UI: real, persona-matched
+  Hinglish responses grounded in real Facts, confirmed via server logs and
+  the rendered chat transcript
 
 ## Running the backend locally
 
@@ -29,7 +31,7 @@
 cd Backend
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
-copy .env.example .env      # fill in DATABASE_URL (same as the app's ../.env), generate real JWT_SECRET/PHONE_HASH_PEPPER
+copy .env.example .env      # fill in DATABASE_URL (same as the app's ../.env), generate real JWT_SECRET/PHONE_HASH_PEPPER, add GEMINI_API_KEY for real chat phrasing
 .venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 

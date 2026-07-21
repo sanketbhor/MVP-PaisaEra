@@ -41,5 +41,12 @@ class Settings:
     TWILIO_AUTH_TOKEN: str | None = os.environ.get("TWILIO_AUTH_TOKEN") or None
     TWILIO_FROM_NUMBER: str | None = os.environ.get("TWILIO_FROM_NUMBER") or None
 
+    # Chat phrasing — see ai_service.py. Same env var names as the root
+    # .env, so a copy-paste of GEMINI_API_KEY works in both places without
+    # renaming anything.
+    GEMINI_API_KEY: str | None = os.environ.get("GEMINI_API_KEY") or None
+    AI_DEFAULT_MODEL: str = os.environ.get("AI_DEFAULT_MODEL", "gemini/gemini-2.5-flash").replace("gemini/", "")
+    AI_MAX_RESPONSE_TOKENS: int = int(os.environ.get("AI_MAX_RESPONSE_TOKENS", "1000"))
+
 
 settings = Settings()

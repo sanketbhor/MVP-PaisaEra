@@ -40,7 +40,7 @@ export const PERSONALITIES: Record<PersonaId, PersonaConfig> = {
     tagline: 'Direct, stern, caring underneath',
     emoji: '👨',
     avatarBg: colors.warnBg,
-    isFree: false,
+    isFree: true,
     voiceDescription:
       'Direct and a little stern. Very short, blunt sentences — states the number, then challenges the user with a pointed question. No softening, no emoji in the reply text itself. Care is implied by the attention paid, never stated outright.',
     sampleQuote: '"Teen subscriptions, paanch din. ₹1,097 udaa diye. Sab ki zaroorat hai kya?"',
@@ -52,7 +52,7 @@ export const PERSONALITIES: Record<PersonaId, PersonaConfig> = {
     tagline: 'Gentle, reassuring, non-judgmental',
     emoji: '👩',
     avatarBg: '#e9e3f0',
-    isFree: false,
+    isFree: true,
     voiceDescription:
       'Gentle and reassuring, addresses the user as "beta". Longer, warmer sentences with softening connectors ("koi baat nahi", "chalo dekhte hain"). Frames every observation collaboratively — never blame, always "let\'s figure it out together."',
     sampleQuote:

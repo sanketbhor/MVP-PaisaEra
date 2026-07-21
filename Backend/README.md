@@ -14,9 +14,10 @@ than two.
 |---|---|---|
 | OTP auth service (FastAPI) | `app/` | **Live-tested end to end** against the real Postgres database — OTP request/cooldown/rate-limit, wrong/right code, user creation, JWT issue + refresh all verified working |
 | `users` / `otp_verifications` tables | `../supabase/migrations/0001_init.sql` + `0002_drop_supabase_auth_dependency.sql` | **Applied** to the live database |
-| Mobile client wiring | `../src/auth/authService.ts` + `apiAuthClient.ts` | Real HTTP calls to `app/`, with a demo-mode fallback when `EXPO_PUBLIC_AUTH_API_URL` is unset |
+| Mobile client wiring (auth) | `../src/auth/authService.ts` + `apiAuthClient.ts` | Real HTTP calls to `app/`, with a demo-mode fallback when `EXPO_PUBLIC_AUTH_API_URL` is unset |
 | SMS delivery | `app/sms/` | `console` (prints to stdout) working and is what's been tested; `msg91`/`twilio` are clearly-labeled stubs pending real credentials |
-| AI phrasing edge function | `../supabase/functions/ai-phrase/` | Written, **not yet deployed** |
+| Chat phrasing (Gemini) | `app/ai.py` + `ai_service.py` | **Live-tested end to end** through the actual UI — real Gemini responses in Hinglish, correctly matching each persona's voice, sourced from real Facts |
+| Mobile client wiring (AI) | `../src/explain/llmPhrase.ts` + `aiApiClient.ts` | Real calls to `app/ai.py`, template fallback when unconfigured/unreachable/ungroundable |
 | Hosting for `app/` | n/a | **Runs locally only so far** — nothing deployed anywhere reachable outside your LAN. See `deployment.md`. |
 
 ## Why homegrown, not Supabase Auth or Firebase Auth
@@ -59,7 +60,7 @@ at all.
 | `EXPO_PUBLIC_AUTH_API_URL` | `.env` locally, EAS env vars | The app's `apiAuthClient.ts` — the base URL is not sensitive, but see `deployment.md` for why it can't just be `localhost` |
 | `DATABASE_URL` | `.env` locally, `Backend/.env` | Your terminal (migrations) and `app/config.py` directly — **never the mobile app** |
 | `JWT_SECRET`, `PHONE_HASH_PEPPER` | `Backend/.env` only | `app/security.py` — genuinely secret, rotate the dev defaults before this is anything but local testing |
-| `GEMINI_API_KEY` | `.env` locally, Supabase Edge Function secrets | `ai-phrase` edge function only — never the app |
+| `GEMINI_API_KEY` | `Backend/.env` only | `app/ai_service.py` — never the mobile app, never EAS |
 
 If `JWT_SECRET`, `PHONE_HASH_PEPPER`, or `DATABASE_URL` ever show up in an
 `EXPO_PUBLIC_`-prefixed variable or in the mobile app's bundle, that's a
