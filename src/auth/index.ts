@@ -1,5 +1,5 @@
 export { isSupabaseConfigured, supabase } from './supabaseClient';
-export { isFirebaseConfigured } from './firebaseClient';
+export { isAuthApiConfigured } from './apiAuthClient';
 export {
   sendOtp,
   verifyOtp,

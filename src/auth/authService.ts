@@ -1,19 +1,16 @@
-// Phone/OTP auth. Every function here has a real Firebase code path and a
-// demo-mode fallback (see isFirebaseConfigured) — the fallback exists so the
-// onboarding flow is fully testable without google-services.json / a native
-// build that includes it, and it deliberately mirrors the same shape
-// (cooldowns, rate limits, expiry) a real backend enforces, rather than
-// just always succeeding.
+// Phone/OTP auth. Every function here has a real backend code path (the
+// homegrown OTP service in Backend/app/, called via apiAuthClient.ts) and a
+// demo-mode fallback (see isAuthApiConfigured) — the fallback exists so the
+// onboarding flow is fully testable without that backend running, and it
+// deliberately mirrors the same shape (cooldowns, rate limits, expiry) the
+// real backend enforces, rather than just always succeeding.
 //
-// Switched from Supabase Auth to Firebase Auth for phone/OTP (see
-// supabase/README.md — this was always flagged as "recommendation, not
-// settled," and Firebase's free tier + India SMS delivery reliability won
-// out). Supabase Postgres remains the data store for users/goals/consents
-// (src/data/*) — that reasoning didn't change, only who issues the session.
-import { getAuth, onAuthStateChanged, signInWithPhoneNumber, signOut as firebaseSignOut } from '@react-native-firebase/auth';
-import type { ConfirmationResult, User } from '@react-native-firebase/auth';
+// Previously Supabase Auth, then Firebase Auth — both real integrations
+// that worked, but this backend is a homegrown OTP service instead: 6-digit
+// codes generated with `secrets.choice`, hashed with argon2, JWT access +
+// refresh tokens on verify. See Backend/README.md for why.
 import { kvStore } from '../storage/kvStore';
-import { isFirebaseConfigured } from './firebaseClient';
+import { isAuthApiConfigured, postJson } from './apiAuthClient';
 import type { AppSession, OtpSendResult, OtpVerifyResult } from './types';
 
 export const RESEND_COOLDOWN_SECONDS = 30;
@@ -23,6 +20,7 @@ const OTP_EXPIRY_MS = 5 * 60 * 1000;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_MAX_SENDS = 5;
 const DEMO_SESSION_KEY = 'paisaera-demo-session';
+const API_SESSION_KEY = 'paisaera-api-session';
 
 interface DemoOtpRecord {
   sentAt: number;
@@ -34,12 +32,12 @@ interface DemoOtpRecord {
 // there's no backend in demo mode to persist it in anyway.
 const demoOtpByPhone = new Map<string, DemoOtpRecord>();
 
-// Firebase's confirm-the-code step needs the confirmation object sendOtp
-// received back from signInWithPhoneNumber — the app's sendOtp/verifyOtp
-// contract is otherwise stateless (matching how Supabase's server-tracked
-// OTP worked), so that object is held here between the two calls rather
-// than threaded through every screen.
-let pendingConfirmation: ConfirmationResult | null = null;
+// What actually gets persisted for a real session — a superset of the
+// public AppSession, since the refresh token isn't something callers
+// outside this file should be passing around.
+interface StoredApiSession extends AppSession {
+  refreshToken: string;
+}
 
 function normalizePhone(localNumber: string): string {
   return `+91${localNumber.replace(/\D/g, '')}`;
@@ -49,25 +47,44 @@ export function isValidIndianMobile(localNumber: string): boolean {
   return /^[6-9]\d{9}$/.test(localNumber.replace(/\D/g, ''));
 }
 
+interface OtpRequestResponse {
+  ok: boolean;
+  cooldown_seconds?: number;
+  error?: string;
+  retry_after_seconds?: number;
+  message?: string;
+}
+
+interface OtpVerifyResponse {
+  ok: boolean;
+  user_id?: string;
+  access_token?: string;
+  refresh_token?: string;
+  error?: string;
+  message?: string;
+}
+
 export async function sendOtp(localNumber: string): Promise<OtpSendResult> {
   if (!isValidIndianMobile(localNumber)) {
     return { ok: false, error: 'invalid_phone' };
   }
   const phone = normalizePhone(localNumber);
 
-  if (isFirebaseConfigured()) {
+  if (isAuthApiConfigured) {
     try {
-      pendingConfirmation = await signInWithPhoneNumber(getAuth(), phone);
-      return { ok: true, cooldownSeconds: RESEND_COOLDOWN_SECONDS };
-    } catch (err) {
-      const code = (err as { code?: string }).code ?? '';
-      if (code === 'auth/too-many-requests') {
-        return { ok: false, error: 'rate_limited', retryAfterSeconds: RESEND_COOLDOWN_SECONDS };
+      const { status, data } = await postJson<OtpRequestResponse>('/auth/otp/request', { phone: localNumber });
+      if (status === 200 && data.ok) {
+        return { ok: true, cooldownSeconds: data.cooldown_seconds ?? RESEND_COOLDOWN_SECONDS };
       }
-      if (code === 'auth/invalid-phone-number') {
+      if (data.error === 'rate_limited') {
+        return { ok: false, error: 'rate_limited', retryAfterSeconds: data.retry_after_seconds ?? RESEND_COOLDOWN_SECONDS };
+      }
+      if (data.error === 'invalid_phone') {
         return { ok: false, error: 'invalid_phone' };
       }
-      return { ok: false, error: 'unknown', message: (err as Error).message ?? 'Unknown error' };
+      return { ok: false, error: 'unknown', message: data.message ?? 'Unknown error' };
+    } catch {
+      return { ok: false, error: 'unknown', message: 'Backend se connect nahi ho paaya.' };
     }
   }
 
@@ -89,22 +106,26 @@ export async function sendOtp(localNumber: string): Promise<OtpSendResult> {
 export async function verifyOtp(localNumber: string, code: string): Promise<OtpVerifyResult> {
   const phone = normalizePhone(localNumber);
 
-  if (isFirebaseConfigured()) {
-    if (!pendingConfirmation) {
-      return { ok: false, error: 'unknown', message: 'OTP kabhi bheja hi nahi gaya — pehle bhejo.' };
-    }
+  if (isAuthApiConfigured) {
     try {
-      const credential = await pendingConfirmation.confirm(code);
-      pendingConfirmation = null;
-      if (!credential?.user) {
-        return { ok: false, error: 'unknown', message: 'No user returned' };
+      const { data } = await postJson<OtpVerifyResponse>('/auth/otp/verify', { phone: localNumber, code });
+      if (data.ok && data.user_id && data.access_token && data.refresh_token) {
+        const session: StoredApiSession = {
+          userId: data.user_id,
+          phone,
+          isDemo: false,
+          accessToken: data.access_token,
+          refreshToken: data.refresh_token,
+        };
+        await kvStore.setItemAsync(API_SESSION_KEY, JSON.stringify(session));
+        return { ok: true, session };
       }
-      return { ok: true, session: { userId: credential.user.uid, phone, isDemo: false } };
-    } catch (err) {
-      const fcode = (err as { code?: string }).code ?? '';
-      if (fcode === 'auth/code-expired') return { ok: false, error: 'expired_code' };
-      if (fcode === 'auth/invalid-verification-code') return { ok: false, error: 'invalid_code' };
-      return { ok: false, error: 'unknown', message: (err as Error).message ?? 'Unknown error' };
+      if (data.error === 'invalid_code' || data.error === 'expired_code') {
+        return { ok: false, error: data.error };
+      }
+      return { ok: false, error: 'unknown', message: data.message ?? 'Unknown error' };
+    } catch {
+      return { ok: false, error: 'unknown', message: 'Backend se connect nahi ho paaya.' };
     }
   }
 
@@ -124,19 +145,15 @@ export async function verifyOtp(localNumber: string, code: string): Promise<OtpV
 }
 
 export async function getSession(): Promise<AppSession | null> {
-  if (isFirebaseConfigured()) {
-    // Firebase rehydrates its signed-in user from disk asynchronously —
-    // reading getAuth().currentUser immediately after launch can race that
-    // and return null even when a session exists. Waiting for the first
-    // onAuthStateChanged callback is the documented fix.
-    const user = await new Promise<User | null>((resolve) => {
-      const unsubscribe = onAuthStateChanged(getAuth(), (u) => {
-        unsubscribe();
-        resolve(u);
-      });
-    });
-    if (!user) return null;
-    return { userId: user.uid, phone: user.phoneNumber ?? '', isDemo: false };
+  if (isAuthApiConfigured) {
+    const raw = await kvStore.getItemAsync(API_SESSION_KEY);
+    if (!raw) return null;
+    try {
+      const stored = JSON.parse(raw) as StoredApiSession;
+      return { userId: stored.userId, phone: stored.phone, isDemo: false, accessToken: stored.accessToken };
+    } catch {
+      return null;
+    }
   }
 
   const raw = await kvStore.getItemAsync(DEMO_SESSION_KEY);
@@ -149,8 +166,8 @@ export async function getSession(): Promise<AppSession | null> {
 }
 
 export async function signOut(): Promise<void> {
-  if (isFirebaseConfigured()) {
-    await firebaseSignOut(getAuth());
+  if (isAuthApiConfigured) {
+    await kvStore.deleteItemAsync(API_SESSION_KEY);
     return;
   }
   await kvStore.deleteItemAsync(DEMO_SESSION_KEY);

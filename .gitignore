@@ -33,8 +33,6 @@ yarn-error.*
 # local env files
 .env
 .env*.local
-google-services.json
-GoogleService-Info.plist
 
 # typescript
 *.tsbuildinfo
@@ -42,3 +40,10 @@ GoogleService-Info.plist
 # generated native folders
 /ios
 /android
+
+# Python backend (Backend/app)
+Backend/.env
+Backend/**/__pycache__/
+Backend/**/*.pyc
+Backend/.venv/
+Backend/venv/

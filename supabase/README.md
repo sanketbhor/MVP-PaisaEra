@@ -1,90 +1,77 @@
 # PaisaEra — Supabase setup
 
-## Auth moved to Firebase — Postgres stays for data
+## Auth is homegrown now — Postgres stays for data
 
 The original design used Supabase Auth for phone/OTP, flagged explicitly as
-"a recommendation, not a settled decision." That question is now settled:
-**auth is Firebase** (see `src/auth/authService.ts`), chosen for its free
-tier and India phone-auth delivery reliability, confirmed by live testing —
-Supabase's own phone provider needed a paid SMS provider configured before
-it would send anything at all, which Firebase's built-in phone auth avoids.
+"a recommendation, not a settled decision." It was then briefly swapped to
+Firebase Auth. Both were real, working integrations — Supabase's own phone
+provider needed a paid SMS provider configured before it would send
+anything at all, which is what motivated trying Firebase. The current
+answer is neither: **auth is a homegrown OTP service** (`Backend/app/`),
+giving full control over the OTP lifecycle without depending on a
+third-party auth provider at all. See `Backend/README.md` for the fuller
+reasoning.
 
-**Postgres/Supabase is still the data store** for `users` / `goals` /
-`consents` (`src/data/*`) — the relational reasoning below didn't change,
-only who issues the session:
+**Postgres/Supabase is still the data store** for `users` and, separately,
+`goals` / `consents` (`src/data/*`) — the relational reasoning below didn't
+change:
 
-PaisaEra's data is inherently relational — transactions reference
-categories, bills and subscriptions reference merchants and renewal cycles,
-goals reference users, consent records reference the specific grant they
-log. That graph of foreign keys is what a relational database is for.
-Firestore's document model would work, but you'd spend real effort
-re-deriving the joins Postgres gives you for free, and its security-rule
-language is a weaker fit for "a user can only ever see their own rows" than
-Postgres row-level security (RLS), which is what `0001_init.sql` uses
-throughout.
+PaisaEra's data is inherently relational — goals reference users, consent
+records reference the specific grant they log, and now `otp_verifications`
+rows are looked up by the same salted phone hash `users.phone_hash` uses.
+That graph of foreign keys is what a relational database is for. Firestore's
+document model would work, but you'd spend real effort re-deriving the
+joins Postgres gives you for free.
 
-## The seam this split relies on — and the gap it currently has
+## How auth and data fit together now
 
-`src/auth` exposes a stable interface (`sendOtp`, `verifyOtp`, `getSession`,
-`AppSession`) that the rest of the app depends on, not on Firebase or
-Supabase directly — that's exactly what let the auth provider swap without
-touching `src/data` or any onboarding screen.
+`Backend/app/otp_service.py` connects to this same Postgres database
+**directly** — a normal database role, not through Supabase's
+PostgREST/anon-key layer — and owns the `users` table entirely: it creates
+the row on first successful OTP verify, and issues its own JWTs. Because it
+connects directly, Postgres RLS policies (written for `auth.uid()`, a
+Supabase Auth concept) don't apply to it either way; the backend does its
+own authorization in Python before it ever runs a query. This is why
+`0002_drop_supabase_auth_dependency.sql` drops `users.id`'s foreign key to
+`auth.users` and the trigger that used to populate it — nothing will ever
+write to Supabase's own `auth.users` table again.
 
-The gap: `0001_init.sql`'s RLS policies check `auth.uid()`, which is
-Supabase's own concept — populated only when a request carries a
-Supabase-issued session JWT. A Firebase-issued session doesn't have one, so
-right now, **real Postgres reads/writes for profile/goals/consents fail
-their RLS check** and the app catches that and falls back to the local demo
-store (see the try/catch in `src/data/userService.ts` and siblings) rather
-than throwing. Two ways to close this gap, neither done yet:
+**`goals` and `consents` are a separate, still-open question.** `src/data/*`
+still talks to those two tables through Supabase's PostgREST/anon-key
+client, which has no way to authenticate as this backend's JWT — so those
+specific calls still fall back to the local demo store, exactly as they did
+under the Firebase attempt. This wasn't made better or worse by the auth
+switch; it's a pre-existing, separately-tracked gap. The honest fix, if
+this backend expands its scope: proxy goals/consents through `Backend/app`
+too (it already owns a trusted direct Postgres connection), rather than
+solving Postgres-RLS-vs-external-JWT bridging a second time.
 
-1. **Supabase's native Firebase third-party auth support** — Supabase
-   dashboard → Authentication → Sign In / Providers → Third-Party Auth →
-   add Firebase, pointing it at the Firebase project ID. Once configured,
-   `auth.jwt()` inside RLS policies can read the Firebase-issued token
-   directly and policies can check against it instead of `auth.uid()` —
-   the cleanest fix, no application code changes needed beyond updating the
-   RLS policies themselves.
-2. **Route writes through a service-role edge function** (same pattern as
-   `supabase/functions/ai-phrase`) that verifies the Firebase ID token
-   server-side and writes with elevated privileges, bypassing RLS safely
-   because the function itself validates identity. More code, no dashboard
-   dependency.
+## What's real here vs. what needs doing
 
-Until one of these is wired, real Postgres calls stay non-fatal but
-inert — everything works against the demo store, honestly, with no data
-loss (the demo store is a fully functional parallel path, not a stub).
+This repo ships the actual integration code — a real Postgres schema
+(`0001_init.sql` + `0002_drop_supabase_auth_dependency.sql`, **both applied
+to the live database**), a real FastAPI service (`Backend/app/`,
+**live-tested end to end** — OTP request/cooldown/rate-limit, verify, user
+creation, JWT issue + refresh all confirmed working against this database).
+What's still open:
 
-## What's real here vs. what needs your project
-
-This repo ships the actual integration code — a real `@supabase/supabase-js`
-client and a real Postgres migration with RLS. Two things follow:
-
-1. **Without `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` set**
-   (see `.env.example`), `src/data/*` runs in a clearly-labeled **demo
-   mode**: profile/goal/consent writes go to local secure storage instead
-   of Postgres. Look for `isSupabaseConfigured` in
-   `src/auth/supabaseClient.ts` — that flag is the seam.
-2. **Once you point it at a real project and run the migration**, reads
-   and simple lookups work; writes still need the RLS gap above closed
-   before they'll persist to Postgres instead of falling back.
+1. `Backend/app` only runs locally so far — see `Backend/deployment.md` for
+   hosting options.
+2. `goals`/`consents` writes from the mobile client still fall back to the
+   demo store, per the still-open question above.
+3. Real SMS delivery (`msg91`/`twilio` in `Backend/app/sms/`) is stubbed —
+   `console` (prints to the server's own terminal) is what's been tested.
 
 ## Setup steps (for a real project)
 
-1. Create a project at supabase.com.
-2. Run `supabase/migrations/0001_init.sql` against your project (via the
-   Supabase SQL editor, or the Supabase CLI: `supabase db push`).
-3. Optionally set `app.phone_pepper` (a server-side secret used to salt the
-   phone-number hash in `public.users.phone_hash`) via
-   `alter database postgres set app.phone_pepper = '<random-string>';` —
-   without it the hash still works, just with a weaker default. Note this
-   column is now vestigial for Firebase-authenticated users specifically —
-   it was designed around Supabase's own `auth.users.phone`, so revisit it
-   once Firebase is the source of truth for phone numbers.
-4. Copy `.env.example` to `.env`, fill in your project URL and anon key from
-   **Project Settings → API**.
-5. Close the RLS gap above (Third-Party Auth or an edge-function bridge)
-   before trusting real Postgres writes.
-6. Restart the Expo dev server so the new env vars are picked up.
-
-For the Firebase side, see `Backend/deployment.md`.
+1. Create a project at supabase.com (or reuse the existing one this app is
+   already pointed at).
+2. Apply both migrations — see `Backend/deployment.md` for the exact
+   commands (direct `psycopg2` execution, since it doesn't require
+   `supabase login`).
+3. Copy `.env.example` to `.env`, fill in your project URL and anon key
+   (**Project Settings → API**) for the `goals`/`consents` client calls, and
+   `DATABASE_URL` for `Backend/app`'s direct connection.
+4. Set up `Backend/app` per `Backend/deployment.md` — its own `.env` needs
+   `DATABASE_URL`, `JWT_SECRET`, and `PHONE_HASH_PEPPER`.
+5. Restart the Expo dev server so new env vars are picked up.

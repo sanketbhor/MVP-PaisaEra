@@ -1,11 +1,14 @@
 // Minimal session shape the rest of the app depends on — deliberately not
-// re-exporting Supabase's full Session type, so demo mode (no Supabase
-// project configured) can satisfy the same contract without pretending to
-// be a real Supabase session.
+// tied to any one backend's own session type, so demo mode (no auth API
+// configured) can satisfy the same contract without pretending to be a
+// real backend session. accessToken is present only for real sessions —
+// callers that need to hit the auth API's other endpoints later read it
+// from here rather than authService reaching into module-private state.
 export interface AppSession {
   userId: string;
   phone: string;
   isDemo: boolean;
+  accessToken?: string;
 }
 
 export type OtpSendResult =
