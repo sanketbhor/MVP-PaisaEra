@@ -1,10 +1,19 @@
-// Phone/OTP auth. Every function here has a real Supabase code path and a
-// demo-mode fallback (see isSupabaseConfigured) — the fallback exists so the
-// onboarding flow is fully testable without a live backend, and it
-// deliberately mirrors the same shape (cooldowns, rate limits, expiry) a
-// real backend enforces, rather than just always succeeding.
+// Phone/OTP auth. Every function here has a real Firebase code path and a
+// demo-mode fallback (see isFirebaseConfigured) — the fallback exists so the
+// onboarding flow is fully testable without google-services.json / a native
+// build that includes it, and it deliberately mirrors the same shape
+// (cooldowns, rate limits, expiry) a real backend enforces, rather than
+// just always succeeding.
+//
+// Switched from Supabase Auth to Firebase Auth for phone/OTP (see
+// supabase/README.md — this was always flagged as "recommendation, not
+// settled," and Firebase's free tier + India SMS delivery reliability won
+// out). Supabase Postgres remains the data store for users/goals/consents
+// (src/data/*) — that reasoning didn't change, only who issues the session.
+import { getAuth, onAuthStateChanged, signInWithPhoneNumber, signOut as firebaseSignOut } from '@react-native-firebase/auth';
+import type { ConfirmationResult, User } from '@react-native-firebase/auth';
 import { kvStore } from '../storage/kvStore';
-import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { isFirebaseConfigured } from './firebaseClient';
 import type { AppSession, OtpSendResult, OtpVerifyResult } from './types';
 
 export const RESEND_COOLDOWN_SECONDS = 30;
@@ -25,6 +34,13 @@ interface DemoOtpRecord {
 // there's no backend in demo mode to persist it in anyway.
 const demoOtpByPhone = new Map<string, DemoOtpRecord>();
 
+// Firebase's confirm-the-code step needs the confirmation object sendOtp
+// received back from signInWithPhoneNumber — the app's sendOtp/verifyOtp
+// contract is otherwise stateless (matching how Supabase's server-tracked
+// OTP worked), so that object is held here between the two calls rather
+// than threaded through every screen.
+let pendingConfirmation: ConfirmationResult | null = null;
+
 function normalizePhone(localNumber: string): string {
   return `+91${localNumber.replace(/\D/g, '')}`;
 }
@@ -39,15 +55,20 @@ export async function sendOtp(localNumber: string): Promise<OtpSendResult> {
   }
   const phone = normalizePhone(localNumber);
 
-  if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.auth.signInWithOtp({ phone });
-    if (error) {
-      if (error.status === 429) {
+  if (isFirebaseConfigured()) {
+    try {
+      pendingConfirmation = await signInWithPhoneNumber(getAuth(), phone);
+      return { ok: true, cooldownSeconds: RESEND_COOLDOWN_SECONDS };
+    } catch (err) {
+      const code = (err as { code?: string }).code ?? '';
+      if (code === 'auth/too-many-requests') {
         return { ok: false, error: 'rate_limited', retryAfterSeconds: RESEND_COOLDOWN_SECONDS };
       }
-      return { ok: false, error: 'unknown', message: error.message };
+      if (code === 'auth/invalid-phone-number') {
+        return { ok: false, error: 'invalid_phone' };
+      }
+      return { ok: false, error: 'unknown', message: (err as Error).message ?? 'Unknown error' };
     }
-    return { ok: true, cooldownSeconds: RESEND_COOLDOWN_SECONDS };
   }
 
   const now = Date.now();
@@ -68,18 +89,23 @@ export async function sendOtp(localNumber: string): Promise<OtpSendResult> {
 export async function verifyOtp(localNumber: string, code: string): Promise<OtpVerifyResult> {
   const phone = normalizePhone(localNumber);
 
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.auth.verifyOtp({ phone, token: code, type: 'sms' });
-    if (error) {
-      const msg = error.message.toLowerCase();
-      if (msg.includes('expired')) return { ok: false, error: 'expired_code' };
-      if (msg.includes('invalid') || msg.includes('token')) return { ok: false, error: 'invalid_code' };
-      return { ok: false, error: 'unknown', message: error.message };
+  if (isFirebaseConfigured()) {
+    if (!pendingConfirmation) {
+      return { ok: false, error: 'unknown', message: 'OTP kabhi bheja hi nahi gaya — pehle bhejo.' };
     }
-    if (!data.session || !data.user) {
-      return { ok: false, error: 'unknown', message: 'No session returned' };
+    try {
+      const credential = await pendingConfirmation.confirm(code);
+      pendingConfirmation = null;
+      if (!credential?.user) {
+        return { ok: false, error: 'unknown', message: 'No user returned' };
+      }
+      return { ok: true, session: { userId: credential.user.uid, phone, isDemo: false } };
+    } catch (err) {
+      const fcode = (err as { code?: string }).code ?? '';
+      if (fcode === 'auth/code-expired') return { ok: false, error: 'expired_code' };
+      if (fcode === 'auth/invalid-verification-code') return { ok: false, error: 'invalid_code' };
+      return { ok: false, error: 'unknown', message: (err as Error).message ?? 'Unknown error' };
     }
-    return { ok: true, session: { userId: data.user.id, phone, isDemo: false } };
   }
 
   const record = demoOtpByPhone.get(phone);
@@ -98,10 +124,19 @@ export async function verifyOtp(localNumber: string, code: string): Promise<OtpV
 }
 
 export async function getSession(): Promise<AppSession | null> {
-  if (isSupabaseConfigured && supabase) {
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) return null;
-    return { userId: data.session.user.id, phone: data.session.user.phone ?? '', isDemo: false };
+  if (isFirebaseConfigured()) {
+    // Firebase rehydrates its signed-in user from disk asynchronously —
+    // reading getAuth().currentUser immediately after launch can race that
+    // and return null even when a session exists. Waiting for the first
+    // onAuthStateChanged callback is the documented fix.
+    const user = await new Promise<User | null>((resolve) => {
+      const unsubscribe = onAuthStateChanged(getAuth(), (u) => {
+        unsubscribe();
+        resolve(u);
+      });
+    });
+    if (!user) return null;
+    return { userId: user.uid, phone: user.phoneNumber ?? '', isDemo: false };
   }
 
   const raw = await kvStore.getItemAsync(DEMO_SESSION_KEY);
@@ -114,8 +149,8 @@ export async function getSession(): Promise<AppSession | null> {
 }
 
 export async function signOut(): Promise<void> {
-  if (isSupabaseConfigured && supabase) {
-    await supabase.auth.signOut();
+  if (isFirebaseConfigured()) {
+    await firebaseSignOut(getAuth());
     return;
   }
   await kvStore.deleteItemAsync(DEMO_SESSION_KEY);

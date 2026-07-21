@@ -11,10 +11,11 @@ deploy`. Think of `Backend/` as the map, `supabase/` as the territory.
 
 | Piece | Where | Status |
 |---|---|---|
+| Auth (phone/OTP) | Firebase Auth, called from `../src/auth/authService.ts` | Client code real, **live-tested against demo mode**; blocked on a real Firebase project — no `google-services.json` yet |
 | Postgres schema (`users`, `goals`, `consents`, RLS) | `../supabase/migrations/0001_init.sql` | Written, **not yet run** against the live project |
-| Auth (phone/OTP) | Supabase Auth, called from `../src/auth/authService.ts` | Client code real; **Phone provider not yet enabled** on the project |
+| Postgres ↔ Firebase auth bridge | n/a | **Not wired** — RLS checks `auth.uid()` (Supabase's own), which a Firebase session doesn't populate. Real writes fall back to the demo store until this is fixed — see `../supabase/README.md` |
 | AI phrasing edge function | `../supabase/functions/ai-phrase/` | Written, **not yet deployed** |
-| Project | `szrxpzxlefrlkbiasvia` (Supabase), `@sammy123/paisaera` (EAS) | Live, empty |
+| Project | `szrxpzxlefrlkbiasvia` (Supabase), `@sammy123/paisaera` (EAS), Firebase project **not yet created** | Partially live |
 
 See `deployment.md` for the exact commands to close each of those gaps, and
 `schema.md` for the data model in plain language.
@@ -24,6 +25,8 @@ See `deployment.md` for the exact commands to close each of those gaps, and
 - **Supabase project ref:** `szrxpzxlefrlkbiasvia`
 - **Supabase URL:** `https://szrxpzxlefrlkbiasvia.supabase.co`
 - **EAS project:** `@sammy123/paisaera` (id `5afd6b65-c197-4458-b8da-1d9f8381ab19`)
+- **Android package / Firebase app ID to register:** `com.paisaera.app`
+- **Firebase project:** not created yet — see `deployment.md`
 
 None of the above are secret — the project ref and URL are meant to be
 public (that's what the anon key + RLS are for). What's NOT written down
@@ -40,6 +43,7 @@ see `deployment.md`.
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | `.env` locally, EAS env vars (all 3 profiles) | The app's Supabase client — safe to be public, protected by RLS |
 | `DATABASE_URL` | `.env` locally only | Your own terminal (`supabase db push`, `psql`) — **never the app** |
 | `GEMINI_API_KEY` | `.env` locally, Supabase Edge Function secrets | `ai-phrase` edge function only — **never the app, never EAS** |
+| `google-services.json` | Project root (gitignored), EAS file-type env var | Firebase's native Android module — its API key is designed to be public/client-embeddable (per Google's own docs), gitignored here anyway for consistency with everything else in this table |
 
 If you ever see `DATABASE_URL` or `GEMINI_API_KEY` show up in an
 `EXPO_PUBLIC_`-prefixed variable, in `app.json`, or in a client-side EAS env

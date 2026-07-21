@@ -12,21 +12,51 @@ locally after that.
 - ✅ `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` set in both
   `.env` (local dev) and EAS env vars (development/preview/production —
   so cloud builds get them automatically, no manual step per build)
+- ✅ Auth switched to Firebase (`src/auth/authService.ts`), demo-mode
+  fallback verified live in the browser preview
+- ❌ No Firebase project exists yet — no `google-services.json`, so every
+  build so far (including the one on your phone) still runs auth in demo
+  mode, not against real Firebase
 - ❌ Postgres migration not run — `public.users` doesn't exist on the live
-  project yet
-- ❌ Phone auth provider not enabled — real OTP sends currently fail with
-  `phone_provider_disabled`
+  Supabase project yet
+- ❌ Postgres ↔ Firebase auth bridge not wired — real writes will hit an
+  RLS wall until this is done (see `../supabase/README.md`)
 - ❌ `ai-phrase` edge function not deployed, `GEMINI_API_KEY` not set as a
   function secret
 
-## 1. Enable phone auth (dashboard only, no CLI for this part)
+## 0. Set up Firebase (dashboard, then one file back into this repo)
 
-Supabase dashboard → your project → **Authentication → Providers → Phone**
-→ enable it → configure an SMS provider underneath (Twilio, MessageBird,
-Vonage, or Supabase's own). In India specifically, transactional SMS also
-needs DLT template registration with the telecom regulator before delivery
-actually works — this has its own lead time, budget for it separately from
-the technical setup.
+1. **console.firebase.google.com → Add project** (free "Spark" plan covers
+   phone auth's free tier). Name it anything — `paisaera` is fine.
+2. **Build → Authentication → Get started → Sign-in method → Phone** →
+   enable it.
+3. **Project settings (gear icon) → Add app → Android.** Package name must
+   match exactly: `com.paisaera.app`. App nickname optional.
+4. On the same screen, add the app's **SHA-1 fingerprint** — Android phone
+   auth won't work without it. Get it from the EAS-managed keystore:
+   ```
+   npx eas-cli credentials --platform android
+   ```
+   (interactive — select the `development` profile, then "Android
+   Keystore: Manage everything needed to build your project" → it prints
+   the SHA-1). Paste that into the Firebase console field.
+5. Download **`google-services.json`** from that same screen, place it at
+   the repo root (`E:\PE\paisaera\google-services.json`) — it's gitignored,
+   matching how `.env` is handled, so it needs to reach EAS separately too:
+   ```
+   npx eas-cli env:create --name GOOGLE_SERVICES_JSON --type file --visibility sensitive --scope project --environment development --environment preview --environment production --value ./google-services.json
+   ```
+6. Rebuild (step 4 below) — this is a native module, so it can't take
+   effect via just editing `.env` or hot-reload like the Supabase keys did.
+
+## 1. Postgres ↔ Firebase bridge (do this before trusting real writes)
+
+Supabase dashboard → your project → **Authentication → Sign In / Providers
+→ Third-Party Auth → Add provider → Firebase Auth**, point it at the
+Firebase project created above. Once active, update `0001_init.sql`'s RLS
+policies to check the Firebase-issued JWT instead of `auth.uid()` — see
+`../supabase/README.md` for the two options here (this one, or an
+edge-function bridge) and why neither is wired yet.
 
 ## 2. Run the migration
 
@@ -66,8 +96,10 @@ detail message) means it's wired correctly.
 
 ## 4. Rebuild the mobile app
 
-The EAS env vars are already set, so this is the only step needed once
-1–3 above are done — no new secrets to push:
+This is the step that actually links Firebase's native module in — until
+this runs, the app keeps using demo-mode auth regardless of what's
+configured on the Firebase/Supabase side, since `google-services.json` and
+the compiled native module only take effect in a fresh native build:
 
 ```
 npx eas-cli build --profile development --platform android

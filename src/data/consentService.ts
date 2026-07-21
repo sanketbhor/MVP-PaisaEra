@@ -18,42 +18,57 @@ function mapRow(row: {
   return { id: row.id, userId: row.user_id, consentType: row.consent_type, grantedAt: row.granted_at, revokedAt: row.revoked_at };
 }
 
+// See userService.ts for why the real path is wrapped in try/catch —
+// Firebase-issued sessions don't satisfy Postgres RLS's auth.uid() check
+// until Supabase's Firebase bridging is configured.
 export async function logConsent(userId: string, consentType: ConsentType): Promise<ConsentRecord> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase
-      .from('consents')
-      .insert({ user_id: userId, consent_type: consentType })
-      .select()
-      .single();
-    if (error) throw error;
-    return mapRow(data);
+    try {
+      const { data, error } = await supabase
+        .from('consents')
+        .insert({ user_id: userId, consent_type: consentType })
+        .select()
+        .single();
+      if (error) throw error;
+      return mapRow(data);
+    } catch {
+      // fall through to demo store
+    }
   }
   return addDemoConsent(userId, consentType);
 }
 
 export async function revokeConsent(userId: string, consentType: ConsentType): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase
-      .from('consents')
-      .update({ revoked_at: new Date().toISOString() })
-      .eq('user_id', userId)
-      .eq('consent_type', consentType)
-      .is('revoked_at', null);
-    if (error) throw error;
-    return;
+    try {
+      const { error } = await supabase
+        .from('consents')
+        .update({ revoked_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .eq('consent_type', consentType)
+        .is('revoked_at', null);
+      if (error) throw error;
+      return;
+    } catch {
+      // fall through to demo store
+    }
   }
   await revokeDemoConsent(userId, consentType);
 }
 
 export async function listConsents(userId: string): Promise<ConsentRecord[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase
-      .from('consents')
-      .select('*')
-      .eq('user_id', userId)
-      .order('granted_at', { ascending: false });
-    if (error) throw error;
-    return (data ?? []).map(mapRow);
+    try {
+      const { data, error } = await supabase
+        .from('consents')
+        .select('*')
+        .eq('user_id', userId)
+        .order('granted_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(mapRow);
+    } catch {
+      // fall through to demo store
+    }
   }
   const demo = await readDemoData(userId);
   return [...demo.consents].reverse();
