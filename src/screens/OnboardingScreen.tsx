@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, radii } from '../theme/tokens';
 
 const TRUST_POINTS = [
@@ -33,12 +34,19 @@ interface Props {
 // design's own onClick={{goHome}} behavior. The two-step flow (trust intro
 // → explicit consent artifact) mirrors how a real AA consent request works.
 export default function OnboardingScreen({ onBack, onConnect }: Props) {
+  // BottomNav is hidden for this tab (see MainApp.tsx), so this screen's
+  // own scroll content reaches the physical bottom edge and needs its own
+  // inset — everywhere else, MainApp/BottomNav already handle it.
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState<Step>('intro');
 
   if (step === 'consent') {
     return (
       <View style={styles.screen}>
-        <ScrollView contentContainerStyle={styles.scrollContentFlex} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContentFlex, { paddingBottom: 24 + insets.bottom }]}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.headerRow}>
             <Pressable onPress={() => setStep('intro')} accessibilityRole="button" style={styles.backBtn}>
               <Text style={styles.backIcon}>←</Text>
@@ -71,7 +79,10 @@ export default function OnboardingScreen({ onBack, onConnect }: Props) {
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.scrollContentFlex} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContentFlex, { paddingBottom: 24 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.headerRow}>
           <Pressable onPress={onBack} accessibilityRole="button" style={styles.backBtn}>
             <Text style={styles.backIcon}>←</Text>

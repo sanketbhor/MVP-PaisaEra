@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Card from '../../components/Card';
+import OnboardingScreenLayout from '../components/OnboardingScreenLayout';
 import { colors, fonts } from '../../theme/tokens';
 
 interface Props {
@@ -10,7 +11,7 @@ interface Props {
 
 export default function ConnectChoiceScreen({ onChooseLink, onChooseManual }: Props) {
   return (
-    <View style={styles.screen}>
+    <OnboardingScreenLayout footer={null}>
       <Text style={styles.title}>Data kaise jodenge?</Text>
       <Text style={styles.subtitle}>Dono theek hain. Baad mein kabhi bhi badal sakte ho.</Text>
 
@@ -49,12 +50,11 @@ export default function ConnectChoiceScreen({ onChooseLink, onChooseManual }: Pr
           </Text>
         </Card>
       </Pressable>
-    </View>
+    </OnboardingScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 26, paddingTop: 12 },
   title: { fontFamily: fonts.sans, fontSize: 24, letterSpacing: -0.3, color: colors.textPrimary, marginTop: 6 },
   subtitle: { fontFamily: fonts.sansRegular, fontSize: 14, lineHeight: 21, color: colors.textMuted2, marginTop: 8 },
   optionCardHighlighted: { marginTop: 22, borderWidth: 2, borderColor: colors.hero },

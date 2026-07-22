@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
@@ -106,34 +107,40 @@ export default function App() {
 
   if (phase === 'checking') {
     return (
-      <View style={styles.root} onLayout={onLayoutRootView}>
-        <AppSplashScreen />
-      </View>
+      <SafeAreaProvider>
+        <View style={styles.root} onLayout={onLayoutRootView}>
+          <AppSplashScreen />
+        </View>
+      </SafeAreaProvider>
     );
   }
 
   if (phase === 'onboarding') {
     return (
-      <View style={styles.root} onLayout={onLayoutRootView}>
-        <OnboardingNavigator
-          onComplete={(_session, answers, path) => {
-            const resolvedPath: ConnectPath = path ?? 'manual';
-            setMainAppState({
-              userName: answers.name || 'Tum',
-              freshInput: buildFreshEngineInput(resolvedPath),
-            });
-            setPhase('main');
-          }}
-        />
-        <StatusBar style="dark" />
-      </View>
+      <SafeAreaProvider>
+        <View style={styles.root} onLayout={onLayoutRootView}>
+          <OnboardingNavigator
+            onComplete={(_session, answers, path) => {
+              const resolvedPath: ConnectPath = path ?? 'manual';
+              setMainAppState({
+                userName: answers.name || 'Tum',
+                freshInput: buildFreshEngineInput(resolvedPath),
+              });
+              setPhase('main');
+            }}
+          />
+          <StatusBar style="dark" />
+        </View>
+      </SafeAreaProvider>
     );
   }
 
   return (
-    <View style={styles.root} onLayout={onLayoutRootView}>
-      <MainApp userName={mainAppState!.userName} freshInput={mainAppState!.freshInput} onLogout={handleLogout} />
-    </View>
+    <SafeAreaProvider>
+      <View style={styles.root} onLayout={onLayoutRootView}>
+        <MainApp userName={mainAppState!.userName} freshInput={mainAppState!.freshInput} onLogout={handleLogout} />
+      </View>
+    </SafeAreaProvider>
   );
 }
 

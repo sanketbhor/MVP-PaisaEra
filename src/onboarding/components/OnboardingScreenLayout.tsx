@@ -1,5 +1,6 @@
 import React from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Props {
   children: React.ReactNode;
@@ -16,16 +17,21 @@ interface Props {
 // reachable above the keyboard on any device size, and content scrolls
 // instead of clipping on shorter screens.
 export default function OnboardingScreenLayout({ children, footer }: Props) {
+  // Android edge-to-edge draws the app behind the status bar and the
+  // system nav bar by default (Expo SDK 57) — without these insets, the
+  // screen title sits behind the status bar and the footer button sits
+  // behind the on-screen nav buttons, both confirmed on a physical device.
+  const insets = useSafeAreaInsets();
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: 12 + insets.top }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {children}
       </ScrollView>
-      <View style={styles.footer}>{footer}</View>
+      <View style={[styles.footer, { paddingBottom: 20 + insets.bottom }]}>{footer}</View>
     </KeyboardAvoidingView>
   );
 }

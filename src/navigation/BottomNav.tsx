@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts } from '../theme/tokens';
 
 // The full set of screens the app can show. Only home/goals/chat/community/
@@ -77,9 +78,12 @@ interface Props {
 }
 
 export default function BottomNav({ active, onChange }: Props) {
+  const insets = useSafeAreaInsets();
   const activeGroup = groupFor(active);
   return (
-    <View style={styles.bar}>
+    // Android's on-screen nav buttons sit right under the tab bar by
+    // default (edge-to-edge) — insets.bottom keeps labels clear of them.
+    <View style={[styles.bar, { paddingBottom: 12 + insets.bottom }]}>
       {TABS.map((tab) => {
         const isActive = tab.key === activeGroup;
         return (
@@ -106,7 +110,6 @@ const styles = StyleSheet.create({
     borderTopColor: colors.hairline,
     paddingHorizontal: 8,
     paddingTop: 6,
-    paddingBottom: 12,
   },
   tab: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
   icon: { fontSize: 19, lineHeight: 22, color: colors.navInactive },

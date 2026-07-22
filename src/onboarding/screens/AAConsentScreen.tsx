@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Card from '../../components/Card';
 import GhostButton from '../components/GhostButton';
+import OnboardingScreenLayout from '../components/OnboardingScreenLayout';
 import { colors, fonts } from '../../theme/tokens';
 import { logConsent } from '../../data';
 
@@ -38,7 +39,7 @@ export default function AAConsentScreen({ userId, onBack, onLinked }: Props) {
   };
 
   return (
-    <View style={styles.screen}>
+    <OnboardingScreenLayout footer={null}>
       <Pressable onPress={onBack} accessibilityRole="button" style={styles.backBtn}>
         <Text style={styles.backIcon}>←</Text>
       </Pressable>
@@ -74,12 +75,11 @@ export default function AAConsentScreen({ userId, onBack, onLinked }: Props) {
       </View>
 
       <GhostButton label="Yeh kaise kaam karta hai? Learn more" onPress={() => {}} color={colors.hero} />
-    </View>
+    </OnboardingScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 26, paddingTop: 12 },
   backBtn: { width: 34, marginBottom: 16 },
   backIcon: { fontSize: 20, color: colors.textPrimary },
   iconBox: {

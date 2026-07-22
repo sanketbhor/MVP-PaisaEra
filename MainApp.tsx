@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import HomeScreen from './src/screens/HomeScreen';
 import TransactionsScreen from './src/screens/TransactionsScreen';
@@ -48,6 +49,7 @@ interface Props {
 }
 
 export default function MainApp({ userName, freshInput, onLogout }: Props) {
+  const insets = useSafeAreaInsets();
   const [isDay1, setIsDay1] = useState(true);
   const [tab, setTab] = useState<TabKey>('home');
   const [personaId, setPersonaId] = useState<PersonaId>(DEFAULT_PERSONA_ID);
@@ -88,7 +90,10 @@ export default function MainApp({ userName, freshInput, onLogout }: Props) {
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <View style={styles.content}>
+      {/* Android edge-to-edge draws behind the status bar by default —
+          this pushes every tab's content below it in one place instead of
+          touching each screen's own padding. */}
+      <View style={[styles.content, { paddingTop: insets.top }]}>
         {showPersonaPicker ? (
           <PersonalityScreen
             personaId={personaId}
