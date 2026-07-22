@@ -6,6 +6,8 @@ import OnboardingScreenLayout from '../components/OnboardingScreenLayout';
 import { colors, fonts } from '../../theme/tokens';
 import { logConsent } from '../../data';
 import { requestSmsPermission } from '../permissions';
+import { getSession } from '../../auth';
+import { syncSmsTransactions } from '../../sms/smsSyncService';
 
 interface Props {
   userId: string;
@@ -21,7 +23,19 @@ export default function SmsPermissionScreen({ userId, onNext }: Props) {
   const handleAllow = async () => {
     setBusy(true);
     const result = await requestSmsPermission(true);
-    if (result.granted) await logConsent(userId, 'sms_permission');
+    if (result.granted) {
+      await logConsent(userId, 'sms_permission');
+      // Fire-and-forget: the 90-day backfill can take a few seconds on a
+      // busy inbox, and there's nothing useful to show mid-scan — the next
+      // screen already renders, Home just updates once this resolves.
+      const session = await getSession();
+      if (session?.accessToken) {
+        syncSmsTransactions(session.accessToken).catch(() => {
+          // Best-effort — a failed backfill just means Home stays on
+          // whatever it already had; the user can retry via re-granting.
+        });
+      }
+    }
     setBusy(false);
     onNext();
   };

@@ -7,21 +7,22 @@ import type { EngineInput } from '../engine';
 
 interface Props {
   input: EngineInput;
+  onOpenCreate: () => void;
 }
 
-export default function GoalsScreen({ input }: Props) {
+export default function GoalsScreen({ input, onOpenCreate }: Props) {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>Goals</Text>
-          <Pressable accessibilityRole="button" style={styles.addPill}>
+          <Pressable onPress={onOpenCreate} accessibilityRole="button" style={styles.addPill}>
             <Text style={styles.addPillText}>＋ Naya</Text>
           </Pressable>
         </View>
 
         {input.goals.length === 0 ? (
-          <NoGoalCard onPress={() => {}} />
+          <NoGoalCard onPress={onOpenCreate} />
         ) : (
           <View style={{ gap: 12 }}>
             {input.goals.map((goal) => (

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .ai import router as ai_router
 from .auth import router as auth_router
+from .transactions import router as transactions_router
 
 app = FastAPI(title="PaisaEra API")
 
@@ -19,6 +20,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(ai_router)
+app.include_router(transactions_router)
 
 
 @app.get("/health")

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -23,6 +23,7 @@ import CAMarketplaceScreen from './src/screens/CAMarketplaceScreen';
 import PricingScreen from './src/screens/PricingScreen';
 import FeedbackScreen from './src/screens/FeedbackScreen';
 import ProUpsellSheet from './src/components/ProUpsellSheet';
+import CreateGoalSheet from './src/components/CreateGoalSheet';
 import type { ChatMessage } from './src/components/ChatBubble';
 import BottomNav from './src/navigation/BottomNav';
 import type { TabKey } from './src/navigation/BottomNav';
@@ -34,9 +35,13 @@ import {
   establishedAppOpensLast7Days,
   day1AppOpensLast7Days,
 } from './src/engine/mockData';
-import type { EngineInput } from './src/engine';
+import type { EngineInput, Goal } from './src/engine';
 import { DEFAULT_PERSONA_ID } from './src/explain';
 import type { PersonaId } from './src/explain';
+import { getSession } from './src/auth';
+import { addGoal, loadCreatedGoals, saveCreatedGoals } from './src/data';
+import { fetchTransactions, isTransactionsApiConfigured, mapToEngineTransactions } from './src/sms';
+import type { RawTransaction } from './src/engine';
 
 interface Props {
   // The user's real name, and the honest fresh-start EngineInput built from
@@ -59,9 +64,37 @@ export default function MainApp({ userName, freshInput, onLogout }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
     buildSeedMessages(establishedInput, DEFAULT_PERSONA_ID),
   );
+  const [showCreateGoal, setShowCreateGoal] = useState(false);
+  const [createdGoals, setCreatedGoals] = useState<Goal[]>([]);
+  const [realTransactions, setRealTransactions] = useState<RawTransaction[]>([]);
   const messagesUsedToday = messages.filter((m) => m.role === 'user').length;
 
-  const input = isDay1 ? freshInput : establishedInput;
+  useEffect(() => {
+    getSession().then((session) => {
+      if (!session) return;
+      loadCreatedGoals(session.userId).then(setCreatedGoals);
+      // Real parsed-SMS transactions (see src/sms) — populated once the
+      // user grants SMS permission during onboarding and a 90-day backfill
+      // finishes. Until then this stays empty and Home/Transactions keep
+      // showing the honest "not enough data yet" state, same as before.
+      if (session.accessToken && isTransactionsApiConfigured) {
+        fetchTransactions(session.accessToken)
+          .then((remote) => setRealTransactions(mapToEngineTransactions(remote)))
+          .catch(() => {});
+      }
+    });
+  }, []);
+
+  const baseInput = isDay1 ? freshInput : establishedInput;
+  // Real SMS-derived transactions only ever replace the honest, near-empty
+  // Day-1 dataset — never the curated "established" demo used for web
+  // preview testing.
+  const withRealTx: EngineInput =
+    isDay1 && realTransactions.length > 0
+      ? { ...baseInput, transactions: realTransactions, transactionsTrackedCount: realTransactions.length }
+      : baseInput;
+  const input: EngineInput =
+    createdGoals.length > 0 ? { ...withRealTx, goals: [...withRealTx.goals, ...createdGoals] } : withRealTx;
   const gamification = isDay1 ? day1Gamification : establishedGamification;
   const appOpensLast7Days = isDay1 ? day1AppOpensLast7Days : establishedAppOpensLast7Days;
 
@@ -86,6 +119,20 @@ export default function MainApp({ userName, freshInput, onLogout }: Props) {
   const handleUnlockPro = () => {
     setIsPro(true);
     setShowProSheet(false);
+  };
+
+  const handleCreateGoal = (goal: Goal) => {
+    setCreatedGoals((prev) => {
+      const next = [...prev, goal];
+      // Best-effort persistence; the goal is already in local state either way.
+      getSession().then((session) => {
+        if (session) {
+          saveCreatedGoals(session.userId, next);
+          addGoal(session.userId, goal.name, goal.targetAmount);
+        }
+      });
+      return next;
+    });
   };
 
   return (
@@ -118,7 +165,7 @@ export default function MainApp({ userName, freshInput, onLogout }: Props) {
             )}
             {tab === 'transactions' && <TransactionsScreen input={input} />}
             {tab === 'budgets' && <BudgetsScreen input={input} />}
-            {tab === 'goals' && <GoalsScreen input={input} />}
+            {tab === 'goals' && <GoalsScreen input={input} onOpenCreate={() => setShowCreateGoal(true)} />}
             {tab === 'subscriptions' && <SubscriptionsScreen input={input} />}
             {tab === 'chat' && (
               <ChatScreen
@@ -190,6 +237,7 @@ export default function MainApp({ userName, freshInput, onLogout }: Props) {
       {tab !== 'onboarding' && <BottomNav active={tab} onChange={setTab} />}
 
       <ProUpsellSheet visible={showProSheet} onClose={() => setShowProSheet(false)} onUnlock={handleUnlockPro} />
+      <CreateGoalSheet visible={showCreateGoal} onClose={() => setShowCreateGoal(false)} onCreate={handleCreateGoal} />
 
       <StatusBar style="dark" />
     </KeyboardAvoidingView>

@@ -12,6 +12,7 @@
     },
     "android": {
       "package": "com.paisaera.app",
+      "permissions": ["android.permission.READ_SMS"],
       "adaptiveIcon": {
         "backgroundColor": "#0A0A0A",
         "foregroundImage": "./assets/android-icon-foreground.png",

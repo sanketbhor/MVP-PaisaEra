@@ -1,5 +1,6 @@
 // Native permission requests triggered from the onboarding explainer
-// screens. The two are NOT equally real — see each function's comment.
+// screens.
+import { PermissionsAndroid, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
 export interface PermissionRequestResult {
@@ -7,16 +8,20 @@ export interface PermissionRequestResult {
   isSimulated: boolean;
 }
 
-// Expo's managed workflow has no SDK module for Android's READ_SMS
-// permission — reading SMS requires a custom native module (e.g.
-// react-native-get-sms-android) wired in through a custom dev client or a
-// bare build, neither of which exists in this project yet. This function is
-// therefore a deliberate, clearly-labeled stand-in: it reflects the user's
-// choice inside the app (which is what the consent record logs) but does
-// NOT actually request an OS permission or read any SMS. Wire a real native
-// module in here before shipping — do not remove this comment until you do.
+// Real on Android (custom dev client, react-native-get-sms-android):
+// fires the actual READ_SMS runtime permission dialog. On web/iOS there is
+// no READ_SMS concept at all — iOS has no OS-level API for reading SMS,
+// full stop, so this stays a clearly-labeled no-op there.
 export async function requestSmsPermission(userAllowed: boolean): Promise<PermissionRequestResult> {
-  return { granted: userAllowed, isSimulated: true };
+  if (!userAllowed) return { granted: false, isSimulated: false };
+  if (Platform.OS !== 'android') return { granted: false, isSimulated: true };
+  const status = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_SMS, {
+    title: 'SMS padhne ki permission',
+    message: 'Taaki transaction SMS se kharche track ho sakein. Personal messages kabhi nahi padhe jaate.',
+    buttonPositive: 'Allow karo',
+    buttonNegative: 'Cancel',
+  });
+  return { granted: status === PermissionsAndroid.RESULTS.GRANTED, isSimulated: false };
 }
 
 // This one is real: expo-notifications works in the managed workflow, and

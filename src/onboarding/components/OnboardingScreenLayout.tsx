@@ -1,6 +1,7 @@
 import React from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardVisible } from '../../utils/useKeyboardVisible';
 
 interface Props {
   children: React.ReactNode;
@@ -22,6 +23,11 @@ export default function OnboardingScreenLayout({ children, footer }: Props) {
   // screen title sits behind the status bar and the footer button sits
   // behind the on-screen nav buttons, both confirmed on a physical device.
   const insets = useSafeAreaInsets();
+  // With the keyboard open it already covers the system nav bar, so keeping
+  // the bottom safe-area inset would just add a visible dead gap between the
+  // CTA and the keyboard (confirmed on a physical device).
+  const keyboardVisible = useKeyboardVisible();
+  const footerPaddingBottom = keyboardVisible ? 10 : 20 + insets.bottom;
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
@@ -31,7 +37,7 @@ export default function OnboardingScreenLayout({ children, footer }: Props) {
       >
         {children}
       </ScrollView>
-      <View style={[styles.footer, { paddingBottom: 20 + insets.bottom }]}>{footer}</View>
+      <View style={[styles.footer, { paddingBottom: footerPaddingBottom }]}>{footer}</View>
     </KeyboardAvoidingView>
   );
 }

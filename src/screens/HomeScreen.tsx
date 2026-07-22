@@ -9,7 +9,7 @@ import SafeToSpendExpandedModal from '../components/SafeToSpendExpandedModal';
 import WhyThisModal from '../components/WhyThisModal';
 import Card from '../components/Card';
 import { colors, fonts, radii } from '../theme/tokens';
-import { formatGreetingDate } from '../utils/formatDate';
+import { formatGreetingDate, getTimeOfDayGreeting } from '../utils/formatDate';
 import { formatINR } from '../utils/format';
 import {
   BILL_ALERT_RULES,
@@ -72,7 +72,7 @@ export default function HomeScreen({ input, userName, isDay1, onToggleDay1, onNa
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.greetingRow}>
           <View>
-            <Text style={styles.greetingTitle}>Good morning, {userName} ☀</Text>
+            <Text style={styles.greetingTitle}>{getTimeOfDayGreeting()}, {userName} ☀</Text>
             <Text style={styles.greetingSubtitle}>
               {isDay1
                 ? `Bas ${input.daysTrackedWithApp} din saath — abhi seekh raha hoon 👋`

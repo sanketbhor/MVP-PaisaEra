@@ -9,6 +9,16 @@ export function formatGreetingDate(dateISO: string): string {
   return `${WEEKDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
+// Uses the device's real local clock, not the engine's `today` — the greeting
+// is about the user's moment in the day, not the dataset being shown.
+export function getTimeOfDayGreeting(now: Date = new Date()): string {
+  const hour = now.getHours();
+  if (hour < 5) return 'Good night';
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export function formatMonthName(dateISO: string): string {
   return MONTHS[new Date(dateISO).getMonth()];
 }
