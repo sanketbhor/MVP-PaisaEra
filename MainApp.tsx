@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import HomeScreen from './src/screens/HomeScreen';
 import TransactionsScreen from './src/screens/TransactionsScreen';
@@ -44,9 +44,10 @@ interface Props {
   // full-feature demo dataset — see the toggle below.
   userName: string;
   freshInput: EngineInput;
+  onLogout: () => void;
 }
 
-export default function MainApp({ userName, freshInput }: Props) {
+export default function MainApp({ userName, freshInput, onLogout }: Props) {
   const [isDay1, setIsDay1] = useState(true);
   const [tab, setTab] = useState<TabKey>('home');
   const [personaId, setPersonaId] = useState<PersonaId>(DEFAULT_PERSONA_ID);
@@ -86,7 +87,7 @@ export default function MainApp({ userName, freshInput }: Props) {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.content}>
         {showPersonaPicker ? (
           <PersonalityScreen
@@ -149,6 +150,7 @@ export default function MainApp({ userName, freshInput }: Props) {
                 onOpenFamily={() => setTab('family')}
                 onOpenBusiness={() => setTab('business')}
                 onRequestPro={() => setShowProSheet(true)}
+                onLogout={onLogout}
               />
             )}
             {tab === 'settings' && (
@@ -185,7 +187,7 @@ export default function MainApp({ userName, freshInput }: Props) {
       <ProUpsellSheet visible={showProSheet} onClose={() => setShowProSheet(false)} onUnlock={handleUnlockPro} />
 
       <StatusBar style="dark" />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

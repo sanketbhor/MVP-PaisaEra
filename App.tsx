@@ -15,9 +15,15 @@ import {
 } from '@expo-google-fonts/ibm-plex-mono';
 import MainApp from './MainApp';
 import AppSplashScreen from './src/components/AppSplashScreen';
-import { OnboardingNavigator, isOnboardingComplete, loadCompletedPath, buildFreshEngineInput } from './src/onboarding';
+import {
+  OnboardingNavigator,
+  isOnboardingComplete,
+  loadCompletedPath,
+  buildFreshEngineInput,
+  resetOnboarding,
+} from './src/onboarding';
 import type { ConnectPath } from './src/onboarding';
-import { getSession } from './src/auth';
+import { getSession, signOut } from './src/auth';
 import { getProfile } from './src/data';
 import { colors } from './src/theme/tokens';
 import type { EngineInput } from './src/engine';
@@ -84,6 +90,16 @@ export default function App() {
     }
   }, [fontsLoaded, fontError]);
 
+  const handleLogout = useCallback(async () => {
+    await signOut();
+    // Full reset, not just clearing the session — otherwise re-launching
+    // would see isOnboardingComplete() still true and try (and fail) to
+    // reconstruct state from a session that no longer exists.
+    await resetOnboarding();
+    setMainAppState(null);
+    setPhase('onboarding');
+  }, []);
+
   if (!fontsLoaded && !fontError) {
     return null;
   }
@@ -116,7 +132,7 @@ export default function App() {
 
   return (
     <View style={styles.root} onLayout={onLayoutRootView}>
-      <MainApp userName={mainAppState!.userName} freshInput={mainAppState!.freshInput} />
+      <MainApp userName={mainAppState!.userName} freshInput={mainAppState!.freshInput} onLogout={handleLogout} />
     </View>
   );
 }

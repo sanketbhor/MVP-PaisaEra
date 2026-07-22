@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import SafeToSpendHero from '../components/SafeToSpendHero';
 import BillCard from '../components/BillCard';
 import InsightCard from '../components/InsightCard';
@@ -79,9 +79,15 @@ export default function HomeScreen({ input, userName, isDay1, onToggleDay1, onNa
                 : formatGreetingDate(input.today)}
             </Text>
           </View>
-          <Pressable onPress={onToggleDay1} accessibilityRole="button" style={styles.dayPill}>
-            <Text style={styles.dayPillText}>{isDay1 ? 'Day 30 →' : 'Day 4 →'}</Text>
-          </Pressable>
+          {/* Dev-only: lets us preview the rich "established" demo dataset
+              during web-preview testing. Real users only ever see their own
+              honest state, so this never renders outside Platform.OS==='web'
+              — same convention as WelcomeScreen's platform switcher. */}
+          {Platform.OS === 'web' && (
+            <Pressable onPress={onToggleDay1} accessibilityRole="button" style={styles.dayPill}>
+              <Text style={styles.dayPillText}>{isDay1 ? 'Day 30 →' : 'Day 4 →'}</Text>
+            </Pressable>
+          )}
         </View>
 
         {sts.income > 0 ? (

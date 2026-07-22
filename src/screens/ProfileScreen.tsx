@@ -24,6 +24,7 @@ interface Props {
   onOpenFamily: () => void;
   onOpenBusiness: () => void;
   onRequestPro: () => void;
+  onLogout: () => void;
 }
 
 export default function ProfileScreen({
@@ -43,6 +44,7 @@ export default function ProfileScreen({
   onOpenFamily,
   onOpenBusiness,
   onRequestPro,
+  onLogout,
 }: Props) {
   const persona = PERSONALITIES[personaId];
   const progression = useMemo(
@@ -170,6 +172,13 @@ export default function ProfileScreen({
           </Pressable>
         </Card>
 
+        <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 14 }}>
+          <Pressable onPress={onLogout} accessibilityRole="button" style={styles.row}>
+            <Text style={styles.rowIcon}>🚪</Text>
+            <Text style={[styles.rowLabel, styles.logoutLabel]}>Logout</Text>
+          </Pressable>
+        </Card>
+
         <View style={styles.trustBanner}>
           <Text style={styles.trustIcon}>🛡</Text>
           <Text style={styles.trustText}>
@@ -234,6 +243,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 15 },
   rowIcon: { width: 22, textAlign: 'center', fontSize: 15 },
   rowLabel: { flex: 1, fontFamily: fonts.sansMedium, fontSize: 14, color: colors.textPrimary },
+  logoutLabel: { color: colors.warnText },
   rowValue: { fontFamily: fonts.sansRegular, fontSize: 12.5, color: colors.textMuted },
   proTag: {
     fontFamily: fonts.sansBold,
