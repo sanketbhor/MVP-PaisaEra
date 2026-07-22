@@ -7,29 +7,19 @@ timestamp, and a dedupe hash. Requires a Bearer access token from /auth.
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from .database import get_db
+from .deps import get_current_user_id
 from .models import Transaction
-from .security import InvalidTokenError, decode_token
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 MAX_BULK_ITEMS = 2000
-
-
-def get_current_user_id(authorization: str = Header(default="")) -> uuid.UUID:
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="missing bearer token")
-    try:
-        payload = decode_token(authorization.removeprefix("Bearer "), expected_type="access")
-        return uuid.UUID(payload["sub"])
-    except (InvalidTokenError, KeyError, ValueError) as exc:
-        raise HTTPException(status_code=401, detail="invalid token") from exc
 
 
 class TransactionItem(BaseModel):

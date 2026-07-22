@@ -39,8 +39,9 @@ import type { EngineInput, Goal } from './src/engine';
 import { DEFAULT_PERSONA_ID } from './src/explain';
 import type { PersonaId } from './src/explain';
 import { getSession } from './src/auth';
-import { addGoal, loadCreatedGoals, saveCreatedGoals } from './src/data';
+import { createGoal, listGoals, loadCreatedGoals, saveCreatedGoals } from './src/data';
 import { fetchTransactions, isTransactionsApiConfigured, mapToEngineTransactions } from './src/sms';
+import { detectRecurringBills, deriveCategoryBudgets, filterToCurrentMonth } from './src/engine';
 import type { RawTransaction } from './src/engine';
 
 interface Props {
@@ -72,7 +73,14 @@ export default function MainApp({ userName, freshInput, onLogout }: Props) {
   useEffect(() => {
     getSession().then((session) => {
       if (!session) return;
-      loadCreatedGoals(session.userId).then(setCreatedGoals);
+      // Backend/app now owns public.goals directly (bypasses the RLS gap
+      // that silently dropped every created goal on the old Supabase path)
+      // — prefer whatever it has; the on-device store is only a fallback
+      // for demo mode / no backend configured.
+      listGoals().then((goals) => {
+        if (goals.length > 0) setCreatedGoals(goals);
+        else loadCreatedGoals(session.userId).then(setCreatedGoals);
+      });
       // Real parsed-SMS transactions (see src/sms) — populated once the
       // user grants SMS permission during onboarding and a 90-day backfill
       // finishes. Until then this stays empty and Home/Transactions keep
@@ -88,10 +96,24 @@ export default function MainApp({ userName, freshInput, onLogout }: Props) {
   const baseInput = isDay1 ? freshInput : establishedInput;
   // Real SMS-derived transactions only ever replace the honest, near-empty
   // Day-1 dataset — never the curated "established" demo used for web
-  // preview testing.
+  // preview testing. EngineInput.transactions is documented to hold only
+  // the current calendar month (income/expense calculations sum it
+  // directly with no date filtering of their own) — the full 90-day
+  // history is kept separately for the pattern detectors below, which
+  // need multiple months to find anything recurring.
   const withRealTx: EngineInput =
     isDay1 && realTransactions.length > 0
-      ? { ...baseInput, transactions: realTransactions, transactionsTrackedCount: realTransactions.length }
+      ? (() => {
+          const bills = detectRecurringBills(realTransactions, baseInput.today);
+          return {
+            ...baseInput,
+            transactions: filterToCurrentMonth(realTransactions, baseInput.today),
+            transactionsTrackedCount: realTransactions.length,
+            bills,
+            categoryBudgets: deriveCategoryBudgets(realTransactions, baseInput.today),
+            billsAreEstimate: bills.length === 0,
+          };
+        })()
       : baseInput;
   const input: EngineInput =
     createdGoals.length > 0 ? { ...withRealTx, goals: [...withRealTx.goals, ...createdGoals] } : withRealTx;
@@ -124,11 +146,14 @@ export default function MainApp({ userName, freshInput, onLogout }: Props) {
   const handleCreateGoal = (goal: Goal) => {
     setCreatedGoals((prev) => {
       const next = [...prev, goal];
-      // Best-effort persistence; the goal is already in local state either way.
+      // Best-effort persistence; the goal is already in local state either
+      // way. createGoal is the real, RLS-bypassing path (Backend/app owns
+      // public.goals directly) — saveCreatedGoals stays as a local
+      // resilience cache for demo mode / no backend configured.
       getSession().then((session) => {
         if (session) {
           saveCreatedGoals(session.userId, next);
-          addGoal(session.userId, goal.name, goal.targetAmount);
+          createGoal(goal);
         }
       });
       return next;

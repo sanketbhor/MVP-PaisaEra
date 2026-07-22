@@ -30,6 +30,12 @@ export { computeGoalStatus, computeGoalProgressPct, computeGoalProjection } from
 
 export { detectSubscriptionRenewalInsight } from './subscriptionEngine';
 
+export { detectRecurringBills } from './billsEngine';
+
+export { deriveCategoryBudgets } from './budgetsEngine';
+
+export { filterToCurrentMonth, filterToPreviousMonth } from './monthWindow';
+
 export { PROGRESSION_LEVELS, computeProgressionStatus } from './progressionEngine';
 
 export { computeChallengeProgress } from './challengesEngine';
@@ -59,4 +65,6 @@ export {
   CONFIDENCE_RULES,
   SUBSCRIPTION_RULES,
   BILL_ALERT_RULES,
+  RECURRING_BILL_RULES,
+  BUDGET_DERIVATION_RULES,
 } from './rules';

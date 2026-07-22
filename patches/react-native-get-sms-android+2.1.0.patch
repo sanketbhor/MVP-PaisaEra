@@ -1,7 +1,16 @@
 diff --git a/node_modules/react-native-get-sms-android/android/build.gradle b/node_modules/react-native-get-sms-android/android/build.gradle
-index 0de40fc..c2bb674 100644
+index 0de40fc..57c94a6 100644
 --- a/node_modules/react-native-get-sms-android/android/build.gradle
 +++ b/node_modules/react-native-get-sms-android/android/build.gradle
+@@ -2,7 +2,7 @@
+ buildscript {
+     repositories {
+         google()
+-        jcenter()
++        mavenCentral()
+     }
+ 
+     dependencies {
 @@ -17,6 +17,7 @@ def safeExtGet(prop, fallback) {
  }
  
@@ -10,3 +19,12 @@ index 0de40fc..c2bb674 100644
      compileSdkVersion safeExtGet('compileSdkVersion', 28)
  
      defaultConfig {
+@@ -36,7 +37,7 @@ repositories {
+         // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
+         url "$rootDir/../node_modules/react-native/android"
+     }
+-    jcenter()
++    mavenCentral()
+ }
+ 
+ dependencies {

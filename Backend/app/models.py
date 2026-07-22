@@ -1,14 +1,15 @@
 """SQLAlchemy models mapped onto the existing public.users table (see
 supabase/migrations/0001_init.sql + 0002_drop_supabase_auth_dependency.sql),
-public.otp_verifications, and public.transactions (0003). Deliberately thin —
-no business logic here. Only the columns this service actually reads/writes
-are modeled; public.goals/public.consents stay out of scope.
+public.otp_verifications, public.transactions (0003), and public.goals /
+public.consents (0001, extended by 0004). Deliberately thin — no business
+logic here. Only the columns this service actually reads/writes are
+modeled.
 """
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Numeric, SmallInteger, Text
+from sqlalchemy import Date, DateTime, Numeric, SmallInteger, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,6 +40,33 @@ class Transaction(Base):
     source: Mapped[str] = mapped_column(Text, nullable=False, default="sms")
     sms_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class Goal(Base):
+    __tablename__ = "goals"
+    __table_args__ = {"schema": "public"}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    goal_type: Mapped[str] = mapped_column(Text, nullable=False)
+    target_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    emoji: Mapped[str | None] = mapped_column(Text, nullable=True)
+    saved_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    monthly_contribution: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    deadline_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class Consent(Base):
+    __tablename__ = "consents"
+    __table_args__ = {"schema": "public"}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    consent_type: Mapped[str] = mapped_column(Text, nullable=False)
+    granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class OTPVerification(Base):
