@@ -13,6 +13,7 @@ export interface RemoteTransaction {
   merchant: string;
   occurredAt: string;
   source: string;
+  userCategory: string | null;
 }
 
 export async function uploadTransactions(accessToken: string, items: ParsedSms[]): Promise<number> {
@@ -40,4 +41,30 @@ export async function fetchTransactions(accessToken: string, days = 90): Promise
   if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
   const data = (await res.json()) as { transactions: RemoteTransaction[] };
   return data.transactions;
+}
+
+// Persists a manual category correction so it survives a reinstall/resync
+// instead of only living in this screen's local state.
+export async function updateTransactionCategory(
+  accessToken: string,
+  transactionId: string,
+  category: string,
+): Promise<void> {
+  const res = await fetch(`${AUTH_API_URL}/transactions/${transactionId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ category }),
+  });
+  if (!res.ok) throw new Error(`update failed: ${res.status}`);
+}
+
+// Soft-deletes a transaction the parser mistakenly created from a
+// non-transaction SMS (e.g. a bill-due reminder) — kept server-side so a
+// later resync of the same SMS doesn't recreate it.
+export async function deleteTransaction(accessToken: string, transactionId: string): Promise<void> {
+  const res = await fetch(`${AUTH_API_URL}/transactions/${transactionId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`delete failed: ${res.status}`);
 }

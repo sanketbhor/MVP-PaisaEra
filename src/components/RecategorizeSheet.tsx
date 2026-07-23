@@ -17,9 +17,10 @@ interface Props {
   merchantName: string | null;
   onClose: () => void;
   onSelect: (category: TransactionCategory) => void;
+  onDelete: () => void;
 }
 
-export default function RecategorizeSheet({ visible, merchantName, onClose, onSelect }: Props) {
+export default function RecategorizeSheet({ visible, merchantName, onClose, onSelect, onDelete }: Props) {
   return (
     <BottomSheet
       visible={visible}
@@ -41,6 +42,13 @@ export default function RecategorizeSheet({ visible, merchantName, onClose, onSe
           </Pressable>
         ))}
       </View>
+
+      <View style={styles.divider} />
+
+      <Pressable onPress={onDelete} accessibilityRole="button" style={styles.deleteRow}>
+        <Text style={styles.deleteText}>🗑 Yeh transaction nahi hai — hata do</Text>
+      </Pressable>
+      <Text style={styles.deleteHint}>Jaise koi bill-due reminder galti se transaction ban gaya ho.</Text>
     </BottomSheet>
   );
 }
@@ -56,4 +64,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   pillText: { fontFamily: fonts.sans, fontSize: 13, color: colors.textPrimary },
+  divider: { height: 1, backgroundColor: colors.hairline, marginTop: 18, marginBottom: 4 },
+  deleteRow: { paddingVertical: 12 },
+  deleteText: { fontFamily: fonts.sansMedium, fontSize: 14, color: colors.warnText },
+  deleteHint: { fontFamily: fonts.sansRegular, fontSize: 12, color: colors.textMuted, marginTop: -6 },
 });

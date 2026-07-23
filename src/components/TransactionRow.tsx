@@ -32,7 +32,11 @@ export default function TransactionRow({ transaction, onPress }: Props) {
     </View>
   );
 
-  if (!transaction.isConfirmed && onPress) {
+  // Always tappable, not just low-confidence guesses — a confirmed
+  // category can still be wrong (a rule guessed badly, or the row is a
+  // false-positive "transaction" from a misread SMS), and both need a way
+  // back into the recategorize/delete sheet.
+  if (onPress) {
     return (
       <Pressable onPress={onPress} accessibilityRole="button">
         {content}

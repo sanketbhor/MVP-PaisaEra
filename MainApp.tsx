@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -41,14 +41,16 @@ import type { PersonaId } from './src/explain';
 import { getSession } from './src/auth';
 import { createGoal, listGoals, loadCreatedGoals, saveCreatedGoals } from './src/data';
 import {
+  deleteTransaction,
   fetchTransactions,
   isTransactionsApiConfigured,
   mapToEngineTransactions,
   syncSmsTransactions,
+  updateTransactionCategory,
 } from './src/sms';
 import type { SyncResult } from './src/sms';
 import { detectRecurringBills, deriveCategoryBudgets, filterToCurrentMonth } from './src/engine';
-import type { RawTransaction, CadencePreference } from './src/engine';
+import type { RawTransaction, CadencePreference, TransactionCategory } from './src/engine';
 
 interface Props {
   // The user's real name, and the honest fresh-start EngineInput built from
@@ -123,22 +125,30 @@ export default function MainApp({ userName, freshInput, onLogout }: Props) {
   // directly with no date filtering of their own) — the full 90-day
   // history is kept separately for the pattern detectors below, which
   // need multiple months to find anything recurring.
-  const withRealTx: EngineInput =
-    isDay1 && realTransactions.length > 0
-      ? (() => {
-          const bills = detectRecurringBills(realTransactions, baseInput.today);
-          return {
-            ...baseInput,
-            transactions: filterToCurrentMonth(realTransactions, baseInput.today),
-            transactionsTrackedCount: realTransactions.length,
-            bills,
-            categoryBudgets: deriveCategoryBudgets(realTransactions, baseInput.today),
-            billsAreEstimate: bills.length === 0,
-          };
-        })()
-      : baseInput;
-  const input: EngineInput =
-    createdGoals.length > 0 ? { ...withRealTx, goals: [...withRealTx.goals, ...createdGoals] } : withRealTx;
+  //
+  // Memoized rather than recomputed inline: TransactionsScreen reads
+  // input.transactions directly (no local copy of its own), so a fresh
+  // array reference on every MainApp render — even ones unrelated to
+  // transaction data — would look like new data arrived and undermine
+  // anything relying on referential stability. This keeps the reference
+  // stable unless realTransactions/createdGoals/isDay1 actually changed.
+  const withRealTx: EngineInput = useMemo(() => {
+    if (!isDay1 || realTransactions.length === 0) return baseInput;
+    const bills = detectRecurringBills(realTransactions, baseInput.today);
+    return {
+      ...baseInput,
+      transactions: filterToCurrentMonth(realTransactions, baseInput.today),
+      transactionsTrackedCount: realTransactions.length,
+      bills,
+      categoryBudgets: deriveCategoryBudgets(realTransactions, baseInput.today),
+      billsAreEstimate: bills.length === 0,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDay1, realTransactions, baseInput]);
+  const input: EngineInput = useMemo(
+    () => (createdGoals.length > 0 ? { ...withRealTx, goals: [...withRealTx.goals, ...createdGoals] } : withRealTx),
+    [withRealTx, createdGoals],
+  );
   const gamification = isDay1 ? day1Gamification : establishedGamification;
   const appOpensLast7Days = isDay1 ? day1AppOpensLast7Days : establishedAppOpensLast7Days;
 
@@ -163,6 +173,25 @@ export default function MainApp({ userName, freshInput, onLogout }: Props) {
   const handleUnlockPro = () => {
     setIsPro(true);
     setShowProSheet(false);
+  };
+
+  // Owned here (not in TransactionsScreen) so the optimistic edit lands in
+  // the same realTransactions state that useMemo above derives input from
+  // — TransactionsScreen has no local copy of its own to keep in sync.
+  const handleUpdateTransactionCategory = (transactionId: string, category: TransactionCategory) => {
+    setRealTransactions((prev) =>
+      prev.map((t) => (t.id === transactionId ? { ...t, userConfirmedCategory: category } : t)),
+    );
+    getSession().then((session) => {
+      if (session?.accessToken) updateTransactionCategory(session.accessToken, transactionId, category).catch(() => {});
+    });
+  };
+
+  const handleDeleteTransaction = (transactionId: string) => {
+    setRealTransactions((prev) => prev.filter((t) => t.id !== transactionId));
+    getSession().then((session) => {
+      if (session?.accessToken) deleteTransaction(session.accessToken, transactionId).catch(() => {});
+    });
   };
 
   const handleCreateGoal = (goal: Goal) => {
@@ -210,7 +239,13 @@ export default function MainApp({ userName, freshInput, onLogout }: Props) {
                 onNavigate={setTab}
               />
             )}
-            {tab === 'transactions' && <TransactionsScreen input={input} />}
+            {tab === 'transactions' && (
+              <TransactionsScreen
+                input={input}
+                onUpdateCategory={handleUpdateTransactionCategory}
+                onDeleteTransaction={handleDeleteTransaction}
+              />
+            )}
             {tab === 'budgets' && <BudgetsScreen input={input} />}
             {tab === 'goals' && <GoalsScreen input={input} onOpenCreate={() => setShowCreateGoal(true)} />}
             {tab === 'subscriptions' && <SubscriptionsScreen input={input} />}

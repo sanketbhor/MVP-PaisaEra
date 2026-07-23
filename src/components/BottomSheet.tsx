@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, fonts } from '../theme/tokens';
 
 interface Props {
@@ -15,11 +15,27 @@ export default function BottomSheet({ visible, onClose, title, body, children }:
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose} accessibilityLabel="Close">
         {/* Nested Pressable claims the touch responder so taps inside the sheet don't bubble to the overlay's onClose. */}
-        <Pressable style={styles.sheet}>
-          <View style={styles.handle} />
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.body}>{body}</Text>
-          {children}
+        <Pressable style={styles.sheetWrap}>
+          <KeyboardAvoidingView
+            style={styles.keyboardAvoider}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            {/* A sheet with a TextInput (e.g. CreateGoalSheet) needs to stay
+                scrollable and keyboard-clear — confirmed on a physical
+                device: without this, the open keyboard squeezed the sheet
+                into a sliver with most of the form unreachable. */}
+            <ScrollView
+              style={styles.sheet}
+              contentContainerStyle={styles.sheetContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.handle} />
+              <Text style={styles.title}>{title}</Text>
+              <Text style={styles.body}>{body}</Text>
+              {children}
+            </ScrollView>
+          </KeyboardAvoidingView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -32,10 +48,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.sheetOverlay,
     justifyContent: 'flex-end',
   },
+  sheetWrap: { maxHeight: '85%' },
+  keyboardAvoider: { flexShrink: 1 },
   sheet: {
     backgroundColor: colors.screenBg,
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
+  },
+  sheetContent: {
     paddingHorizontal: 22,
     paddingTop: 20,
     paddingBottom: 34,

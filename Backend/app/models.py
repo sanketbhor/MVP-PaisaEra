@@ -39,6 +39,15 @@ class Transaction(Base):
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     source: Mapped[str] = mapped_column(Text, nullable=False, default="sms")
     sms_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # User's manual category correction — overrides the client-side rule
+    # engine's guess. Kept server-side (not just on-device) so it survives
+    # a reinstall/re-sync instead of the correction being silently lost.
+    user_category: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Soft-delete for "this isn't a real transaction" (e.g. a bill-due
+    # reminder the parser misread). Kept as a row rather than hard-deleted
+    # so its sms_hash still blocks the same SMS from being re-inserted the
+    # next time a 90-day resync reads the same inbox message.
+    dismissed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 

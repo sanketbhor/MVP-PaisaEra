@@ -19,13 +19,27 @@ const SKIP_PATTERNS = [
   /one[- ]time password/i,
   /\bverification code\b/i,
   /\brequested money\b/i, // UPI collect requests — nothing moved yet
-  /\bwill be (?:debited|deducted)\b/i, // upcoming/autopay notices
+  /\bwill be (?:debited|deducted|charged)\b/i, // upcoming/autopay notices
   /\boffer\b/i,
   /\bdiscount\b/i,
   /\bcashback of up ?to\b/i,
   /\bapply now\b/i,
   /\bloan\b/i,
   /\bwin\b/i,
+  // Credit-card bill/statement notices — real money hasn't moved yet, this
+  // is a summary of what's owed, not a transaction. Confirmed live: these
+  // were showing up as fake transactions before this fix.
+  /\b(?:total|minimum|outstanding)\s*(?:amount\s*)?due\b/i,
+  /\bbill\s*due\b/i,
+  /\bdue\s*date\b/i,
+  /\bpayment\s*due\b/i,
+  /\be?-?statement\s*(?:generated|is ready|available)\b/i,
+  /\boutstanding\s*(?:amount|balance)\b/i,
+  /\bavailable\s*(?:credit\s*)?limit\b/i,
+  /\bpay\s*by\s*due\s*date\b/i,
+  // Autopay/mandate setup confirmations — registering a standing
+  // instruction isn't itself a charge.
+  /\b(?:auto[- ]?debit|standing instruction|mandate)\s*(?:registered|created|set\s*up|scheduled)\b/i,
 ];
 
 const AMOUNT_RE = /(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)/i;

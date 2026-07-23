@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Card from '../components/Card';
 import TransactionRow from '../components/TransactionRow';
@@ -6,30 +6,24 @@ import RecategorizeSheet from '../components/RecategorizeSheet';
 import { colors, fonts } from '../theme/tokens';
 import { relativeDayLabel } from '../utils/formatDate';
 import { categorizeAll } from '../engine';
-import type { EngineInput, RawTransaction, TransactionCategory } from '../engine';
+import type { EngineInput, TransactionCategory } from '../engine';
 
 interface Props {
   input: EngineInput;
+  onUpdateCategory: (transactionId: string, category: TransactionCategory) => void;
+  onDeleteTransaction: (transactionId: string) => void;
 }
 
-export default function TransactionsScreen({ input }: Props) {
-  const [rawTransactions, setRawTransactions] = useState<RawTransaction[]>(input.transactions);
+export default function TransactionsScreen({ input, onUpdateCategory, onDeleteTransaction }: Props) {
   const [recatTxId, setRecatTxId] = useState<string | null>(null);
 
-  // input.transactions can change after this screen has already mounted —
-  // e.g. the real-SMS sync resolving asynchronously after Home already
-  // rendered. useState's initial value only applies on first mount, so
-  // without this the screen gets stuck showing whatever was true at that
-  // moment (often still-empty) even once real data arrives.
-  useEffect(() => {
-    setRawTransactions(input.transactions);
-  }, [input.transactions]);
-
-  // Categorization runs fresh off the raw transactions every render — the
-  // engine, not local UI state, is the source of truth for category/confirmed.
+  // Categorization runs fresh off input.transactions every render — no
+  // local copy of the list is kept here. MainApp owns the one mutable copy
+  // (realTransactions) that category/delete edits apply to, so there's
+  // nothing for this screen to fall out of sync with.
   const categorized = useMemo(
-    () => categorizeAll(rawTransactions).filter((t) => t.type === 'debit'),
-    [rawTransactions],
+    () => categorizeAll(input.transactions).filter((t) => t.type === 'debit'),
+    [input.transactions],
   );
 
   const groups = useMemo(() => {
@@ -46,9 +40,13 @@ export default function TransactionsScreen({ input }: Props) {
 
   const handleSelectCategory = (category: TransactionCategory) => {
     if (!recatTxId) return;
-    setRawTransactions((prev) =>
-      prev.map((t) => (t.id === recatTxId ? { ...t, userConfirmedCategory: category } : t)),
-    );
+    onUpdateCategory(recatTxId, category);
+    setRecatTxId(null);
+  };
+
+  const handleDelete = () => {
+    if (!recatTxId) return;
+    onDeleteTransaction(recatTxId);
     setRecatTxId(null);
   };
 
@@ -77,10 +75,7 @@ export default function TransactionsScreen({ input }: Props) {
               <Card style={styles.groupCard}>
                 {items.map((tx, i) => (
                   <React.Fragment key={tx.id}>
-                    <TransactionRow
-                      transaction={tx}
-                      onPress={tx.isConfirmed ? undefined : () => setRecatTxId(tx.id)}
-                    />
+                    <TransactionRow transaction={tx} onPress={() => setRecatTxId(tx.id)} />
                     {i < items.length - 1 && <View style={styles.divider} />}
                   </React.Fragment>
                 ))}
@@ -95,6 +90,7 @@ export default function TransactionsScreen({ input }: Props) {
         merchantName={recatTx?.merchant ?? null}
         onClose={() => setRecatTxId(null)}
         onSelect={handleSelectCategory}
+        onDelete={handleDelete}
       />
     </View>
   );
