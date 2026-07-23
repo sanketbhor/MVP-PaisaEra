@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Card from '../components/Card';
 import TransactionRow from '../components/TransactionRow';
@@ -15,6 +15,15 @@ interface Props {
 export default function TransactionsScreen({ input }: Props) {
   const [rawTransactions, setRawTransactions] = useState<RawTransaction[]>(input.transactions);
   const [recatTxId, setRecatTxId] = useState<string | null>(null);
+
+  // input.transactions can change after this screen has already mounted —
+  // e.g. the real-SMS sync resolving asynchronously after Home already
+  // rendered. useState's initial value only applies on first mount, so
+  // without this the screen gets stuck showing whatever was true at that
+  // moment (often still-empty) even once real data arrives.
+  useEffect(() => {
+    setRawTransactions(input.transactions);
+  }, [input.transactions]);
 
   // Categorization runs fresh off the raw transactions every render — the
   // engine, not local UI state, is the source of truth for category/confirmed.

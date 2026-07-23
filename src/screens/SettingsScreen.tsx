@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Card from '../components/Card';
 import DeleteAccountSheet from '../components/DeleteAccountSheet';
 import { colors, fonts, radii } from '../theme/tokens';
 import { computeNotificationCadence } from '../engine';
 import type { CadencePreference } from '../engine';
+import type { SyncResult } from '../sms';
 
 const CADENCE_OPTIONS: { key: CadencePreference; label: string }[] = [
   { key: 'low', label: 'Kam' },
@@ -17,12 +18,50 @@ interface Props {
   appOpensLast7Days: number;
   onBack: () => void;
   onOpenFeedback: () => void;
+  onSyncSmsNow: () => Promise<SyncResult | null>;
+  // Lifted to MainApp rather than kept as local state here — MainApp
+  // conditionally renders this screen per-tab, so it fully unmounts on
+  // every tab switch and any state kept only here resets on return
+  // (confirmed live: the SMS-fallback toggle flipped back off after
+  // navigating away and back).
+  cadencePreference: CadencePreference;
+  onChangeCadencePreference: (pref: CadencePreference) => void;
+  smsFallbackEnabled: boolean;
+  onToggleSmsFallback: () => void;
 }
 
-export default function SettingsScreen({ daysSinceInstall, appOpensLast7Days, onBack, onOpenFeedback }: Props) {
-  const [cadencePreference, setCadencePreference] = useState<CadencePreference>('auto');
-  const [smsFallbackEnabled, setSmsFallbackEnabled] = useState(false);
+export default function SettingsScreen({
+  daysSinceInstall,
+  appOpensLast7Days,
+  onBack,
+  onOpenFeedback,
+  onSyncSmsNow,
+  cadencePreference,
+  onChangeCadencePreference,
+  smsFallbackEnabled,
+  onToggleSmsFallback,
+}: Props) {
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+  const handleSyncNow = async () => {
+    setSyncing(true);
+    setSyncMessage(null);
+    const result = await onSyncSmsNow();
+    setSyncing(false);
+    if (!result) {
+      setSyncMessage('Login session nahi mila — dobara try karo.');
+    } else if (!result.ok) {
+      setSyncMessage(
+        result.error === 'unsupported_platform'
+          ? 'Yeh sirf Android par kaam karta hai.'
+          : 'Sync fail ho gaya — dobara try karo.',
+      );
+    } else {
+      setSyncMessage(`${result.scanned} SMS dekhe, ${result.uploaded} naye transactions mile.`);
+    }
+  };
 
   const cadence = useMemo(
     () => computeNotificationCadence({ daysSinceInstall, appOpensLast7Days, preference: cadencePreference }),
@@ -50,7 +89,7 @@ export default function SettingsScreen({ daysSinceInstall, appOpensLast7Days, on
               return (
                 <Pressable
                   key={opt.key}
-                  onPress={() => setCadencePreference(opt.key)}
+                  onPress={() => onChangeCadencePreference(opt.key)}
                   accessibilityRole="button"
                   style={[styles.pill, selected && styles.pillSelected]}
                 >
@@ -73,7 +112,7 @@ export default function SettingsScreen({ daysSinceInstall, appOpensLast7Days, on
               </Text>
             </View>
             <Pressable
-              onPress={() => setSmsFallbackEnabled((v) => !v)}
+              onPress={onToggleSmsFallback}
               accessibilityRole="switch"
               accessibilityState={{ checked: smsFallbackEnabled }}
               style={[styles.toggle, smsFallbackEnabled && styles.toggleOn]}
@@ -82,6 +121,26 @@ export default function SettingsScreen({ daysSinceInstall, appOpensLast7Days, on
             </Pressable>
           </View>
         </Card>
+
+        {Platform.OS === 'android' && (
+          <Card style={{ marginBottom: 12 }}>
+            <View style={styles.toggleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowLabel}>SMS se abhi sync karo</Text>
+                <Text style={styles.rowSubtext}>Pichle 90 din ke transaction SMS dobara scan karo</Text>
+              </View>
+              <Pressable
+                onPress={handleSyncNow}
+                disabled={syncing}
+                accessibilityRole="button"
+                style={[styles.syncBtn, syncing && styles.syncBtnBusy]}
+              >
+                <Text style={styles.syncBtnText}>{syncing ? 'Sync ho raha...' : 'Sync karo'}</Text>
+              </Pressable>
+            </View>
+            {syncMessage && <Text style={styles.syncMessage}>{syncMessage}</Text>}
+          </Card>
+        )}
 
         <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
           <View style={styles.row}>
@@ -168,6 +227,10 @@ const styles = StyleSheet.create({
   toggleOn: { backgroundColor: colors.hero },
   toggleKnob: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
   toggleKnobOn: { alignSelf: 'flex-end' },
+  syncBtn: { backgroundColor: colors.hero, borderRadius: radii.pill, paddingHorizontal: 14, paddingVertical: 9 },
+  syncBtnBusy: { opacity: 0.6 },
+  syncBtnText: { fontFamily: fonts.sansBold, fontSize: 12.5, color: colors.heroOnColor },
+  syncMessage: { fontFamily: fonts.sansRegular, fontSize: 12, color: colors.textMuted, marginTop: 10 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 15 },
   rowIcon: { width: 22, textAlign: 'center', fontSize: 15 },
   rowLabel: { fontFamily: fonts.sansMedium, fontSize: 14, color: colors.textPrimary },

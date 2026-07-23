@@ -40,9 +40,15 @@ import { DEFAULT_PERSONA_ID } from './src/explain';
 import type { PersonaId } from './src/explain';
 import { getSession } from './src/auth';
 import { createGoal, listGoals, loadCreatedGoals, saveCreatedGoals } from './src/data';
-import { fetchTransactions, isTransactionsApiConfigured, mapToEngineTransactions } from './src/sms';
+import {
+  fetchTransactions,
+  isTransactionsApiConfigured,
+  mapToEngineTransactions,
+  syncSmsTransactions,
+} from './src/sms';
+import type { SyncResult } from './src/sms';
 import { detectRecurringBills, deriveCategoryBudgets, filterToCurrentMonth } from './src/engine';
-import type { RawTransaction } from './src/engine';
+import type { RawTransaction, CadencePreference } from './src/engine';
 
 interface Props {
   // The user's real name, and the honest fresh-start EngineInput built from
@@ -68,6 +74,8 @@ export default function MainApp({ userName, freshInput, onLogout }: Props) {
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [createdGoals, setCreatedGoals] = useState<Goal[]>([]);
   const [realTransactions, setRealTransactions] = useState<RawTransaction[]>([]);
+  const [cadencePreference, setCadencePreference] = useState<CadencePreference>('auto');
+  const [smsFallbackEnabled, setSmsFallbackEnabled] = useState(false);
   const messagesUsedToday = messages.filter((m) => m.role === 'user').length;
 
   useEffect(() => {
@@ -85,13 +93,27 @@ export default function MainApp({ userName, freshInput, onLogout }: Props) {
       // user grants SMS permission during onboarding and a 90-day backfill
       // finishes. Until then this stays empty and Home/Transactions keep
       // showing the honest "not enough data yet" state, same as before.
-      if (session.accessToken && isTransactionsApiConfigured) {
-        fetchTransactions(session.accessToken)
-          .then((remote) => setRealTransactions(mapToEngineTransactions(remote)))
-          .catch(() => {});
-      }
+      refreshRealTransactions(session.accessToken);
     });
   }, []);
+
+  const refreshRealTransactions = (accessToken?: string) => {
+    if (!accessToken || !isTransactionsApiConfigured) return;
+    fetchTransactions(accessToken)
+      .then((remote) => setRealTransactions(mapToEngineTransactions(remote)))
+      .catch(() => {});
+  };
+
+  // Manual re-sync (Settings → "SMS se abhi sync karo") — the same 90-day
+  // backfill that runs once during onboarding, re-runnable any time e.g.
+  // after the parser gets tuned for a bank format it missed the first time.
+  const handleSyncSmsNow = async (): Promise<SyncResult | null> => {
+    const session = await getSession();
+    if (!session?.accessToken) return null;
+    const result = await syncSmsTransactions(session.accessToken);
+    if (result.ok) refreshRealTransactions(session.accessToken);
+    return result;
+  };
 
   const baseInput = isDay1 ? freshInput : establishedInput;
   // Real SMS-derived transactions only ever replace the honest, near-empty
@@ -236,6 +258,11 @@ export default function MainApp({ userName, freshInput, onLogout }: Props) {
                 appOpensLast7Days={appOpensLast7Days}
                 onBack={() => setTab('profile')}
                 onOpenFeedback={() => setTab('feedback')}
+                onSyncSmsNow={handleSyncSmsNow}
+                cadencePreference={cadencePreference}
+                onChangeCadencePreference={setCadencePreference}
+                smsFallbackEnabled={smsFallbackEnabled}
+                onToggleSmsFallback={() => setSmsFallbackEnabled((v) => !v)}
               />
             )}
             {tab === 'feedback' && <FeedbackScreen onBack={() => setTab('settings')} />}

@@ -26,15 +26,19 @@ export async function syncSmsTransactions(accessToken: string): Promise<SyncResu
   try {
     const since = Date.now() - SYNC_WINDOW_DAYS * 24 * 60 * 60 * 1000;
     const messages = await readInboxSince(since);
+    console.log(`[sms-sync] read ${messages.length} inbox messages since ${new Date(since).toISOString()}`);
 
     const parsed = messages
       .map((m) => parseTransactionSms(m.address, m.body, m.timestampMs))
       .filter((p): p is NonNullable<typeof p> => p !== null);
+    console.log(`[sms-sync] parsed ${parsed.length} of ${messages.length} as transactions`);
 
     const uploaded = await uploadTransactions(accessToken, parsed);
+    console.log(`[sms-sync] uploaded ${uploaded} new transactions`);
 
     return { ok: true, scanned: messages.length, parsed: parsed.length, uploaded };
   } catch (err) {
+    console.error('[sms-sync] failed:', err);
     return {
       ok: false,
       scanned: 0,

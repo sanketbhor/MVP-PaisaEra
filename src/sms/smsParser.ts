@@ -34,9 +34,16 @@ const AMOUNT_RE = /(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)/i;
 // bare `\s*[.,;]` would stop at the "." inside "NETFLIX.COM" too.
 const END = '(?=\\s+on\\b|\\s+via\\b|\\s+ref\\b|\\s+avl\\b|\\s*[.,;](?:\\s|$)|$)';
 
-// Ordered: most specific first. Each must capture the merchant-ish text.
+// Ordered: most specific/anchored first, so a loosely-anchored pattern (like
+// generic "to X") never gets first crack at boilerplate footer text (e.g.
+// "SMS BLOCK 111 to 9215676766") ahead of a pattern anchored to the actual
+// transaction clause.
 const MERCHANT_PATTERNS: RegExp[] = [
   /(?:to|at)\s+vpa\s+([a-z0-9.\-_]+)@/i,
+  // ICICI-style: "...debited for Rs X on <date>; MERCHANT credited/debited."
+  // — no preposition at all, the merchant just follows the date clause's
+  // semicolon directly.
+  /;\s*([A-Za-z0-9][A-Za-z0-9 &.'*_-]{1,39}?)\s+(?:credited|debited)\b/i,
   new RegExp(`\\bat\\s+([A-Za-z0-9][A-Za-z0-9 &.'*_-]{1,39}?)${END}`, 'i'),
   new RegExp(`\\b(?:to|towards)\\s+([A-Za-z0-9][A-Za-z0-9 &.'*_-]{1,39}?)${END}`, 'i'),
   // Bank transfer mode (NEFT/IMPS/RTGS/UPI) followed by "from X" — checked
@@ -48,6 +55,9 @@ const MERCHANT_PATTERNS: RegExp[] = [
 
 // Words a merchant capture can accidentally grab from bank boilerplate.
 const MERCHANT_REJECTS = /^(?:a\/c|ac|account|your|info|upi|neft|imps|bank)$/i;
+// A real merchant name always has at least one letter — a bare number
+// (phone number, reference id, account suffix) is boilerplate, not a name.
+const HAS_LETTER = /[a-z]/i;
 
 // FNV-1a — tiny, stable, dependency-free. Collision odds are irrelevant at
 // per-user inbox scale, and the backend dedupes per (user, hash) anyway.
@@ -88,7 +98,7 @@ export function parseTransactionSms(
     const m = body.match(pattern);
     if (m) {
       const candidate = m[1].trim().replace(/\s{2,}/g, ' ');
-      if (candidate.length >= 2 && !MERCHANT_REJECTS.test(candidate)) {
+      if (candidate.length >= 2 && HAS_LETTER.test(candidate) && !MERCHANT_REJECTS.test(candidate)) {
         merchant = candidate;
         break;
       }
