@@ -25,6 +25,7 @@ export async function phraseChatResponse(
   fact: Fact,
   personaId: PersonaId,
   query: string,
+  recentReplies: string[] = [],
 ): Promise<ChatResponseText> {
   const templateResponse = buildChatResponse(fact, personaId);
 
@@ -36,7 +37,7 @@ export async function phraseChatResponse(
   }
 
   try {
-    const { data } = await postJson<PhraseResponse>('/ai/phrase', { fact, personaId, query });
+    const { data } = await postJson<PhraseResponse>('/ai/phrase', { fact, personaId, query, recentReplies });
     if (!data.ok || !data.text) {
       return templateResponse;
     }

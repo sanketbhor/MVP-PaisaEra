@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, confidenceLabel, fonts } from '../theme/tokens';
 import type { ConfidenceLevel } from '../theme/tokens';
 import type { NavigableTab } from '../nlq';
+import type { PersonaId } from '../explain/personalities';
 
 export interface ChatMessage {
   id: string;
@@ -11,6 +12,10 @@ export interface ChatMessage {
   confidence?: ConfidenceLevel;
   sourceLabel?: string;
   sourceTab?: NavigableTab | null;
+  // Which persona generated an 'ai' message — lets the anti-repetition
+  // check in ChatScreen compare a persona's own recent replies only, not
+  // another persona's phrasing after a mid-conversation switch.
+  personaId?: PersonaId;
 }
 
 interface Props {

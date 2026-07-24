@@ -34,6 +34,7 @@ export function buildSeedMessages(input: EngineInput, personaId: PersonaId): Cha
       confidence: response.confidence,
       sourceLabel: response.sourceTab ? response.sourceLabel : undefined,
       sourceTab: response.sourceTab,
+      personaId,
     });
   }
   return messages;
@@ -79,7 +80,13 @@ export default function ChatScreen({
     setPendingText(text);
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
     const fact = routeQuery(text, input);
-    const response = await phraseChatResponse(fact, personaId, text);
+    // Only this persona's own past replies — after a mid-conversation
+    // persona switch, Papa shouldn't be steered away from Mom's phrasing.
+    const recentReplies = messages
+      .filter((m) => m.role === 'ai' && m.personaId === personaId)
+      .slice(-3)
+      .map((m) => m.text);
+    const response = await phraseChatResponse(fact, personaId, text, recentReplies);
     const aiMessage: ChatMessage = {
       id: nextId('msg-a'),
       role: 'ai',
@@ -87,6 +94,7 @@ export default function ChatScreen({
       confidence: response.confidence,
       sourceLabel: response.sourceTab ? response.sourceLabel : undefined,
       sourceTab: response.sourceTab,
+      personaId,
     };
     onSendMessage(text, aiMessage);
     setPendingText(null);
